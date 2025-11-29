@@ -1,11 +1,28 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'pages/settings_page.dart';
+import 'theme/theme_provider.dart';
+import 'package:provider/provider.dart';
 
-void main() {
-  runApp(const AgriSenseApp());
+import 'theme/theme_service.dart';
+import 'widgets/app_bar.dart';
+import 'detection_service.dart';
+import 'gemini_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Load saved theme
+  final savedTheme = await ThemeService.loadThemeMode();
+
+  runApp(ChangeNotifierProvider(
+      create: (_) => ThemeProvider()..setTheme(savedTheme),
+      child: const AgriSenseApp(),
+  ),
+  );
 }
 
 class AgriSenseApp extends StatelessWidget {
@@ -13,29 +30,109 @@ class AgriSenseApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return MaterialApp(
-      title: 'AgriSense Live Monitor',
+      debugShowCheckedModeBanner: false,
+      title: 'AgriSense AI Monitor',
+
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        colorScheme: ColorScheme.fromSeed(
+    seedColor: Colors.green,
+    brightness: Brightness.light, // set here instead of ThemeData.brightness
+  ),
         useMaterial3: true,
+        fontFamily: 'Roboto',
       ),
-      home: const DashboardPage(),
+
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+    seedColor: Colors.green,
+    brightness: Brightness.dark, // set here
+  ),
+
+        useMaterial3: true,
+        fontFamily: 'Roboto',
+      ),
+      themeMode: themeProvider.themeMode,
+      home: const MainWrapper(),
     );
   }
 }
 
-class NormalizedDetection {
-  final String label;
-  final double confidence;
-  final String? time;
+// -------------------------------------------------------------
+// MAIN WRAPPER WITH BUBBLE NAVIGATION
+// -------------------------------------------------------------
+class MainWrapper extends StatefulWidget {
+  const MainWrapper({super.key});
 
-  NormalizedDetection({
-    required this.label,
-    required this.confidence,
-    this.time,
-  });
+  @override
+  State<MainWrapper> createState() => _MainWrapperState();
 }
 
+class _MainWrapperState extends State<MainWrapper> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _pages = [
+    DashboardPage(),
+    HistoryPage(),
+    SettingsPage(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_selectedIndex],
+      extendBody: true,
+      bottomNavigationBar: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(30),
+          child: NavigationBar(
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: (i) => setState(() => _selectedIndex = i),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            indicatorColor: Colors.green.shade100,
+            height: 70,
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: "Dashboard",
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.history_outlined),
+                selectedIcon: Icon(Icons.history),
+                label: "History",
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings),
+                label: "Settings",
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// DASHBOARD PAGE (MODERNIZED)
+// -------------------------------------------------------------
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
 
@@ -45,228 +142,333 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   List<NormalizedDetection> currentDetections = [];
-  String geminiText = "Waiting for analysis...";
+  String geminiText = "Waiting for AI analysis...";
+  String? lastDiseaseLabel;
 
   Timer? _detectionTimer;
-  Timer? _geminiTimer;
 
   @override
   void initState() {
     super.initState();
 
-    // Poll Node-RED every 500ms
-    _detectionTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      fetchDetections();
-    });
+    _detectionTimer = Timer.periodic(
+      const Duration(milliseconds: 700),
+      (_) => fetchDetections(),
+    );
+  }
 
-    // Trigger Gemini API every 10 seconds based on latest detection
-    _geminiTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      if (currentDetections.isNotEmpty) {
-        generateGeminiRecommendation(currentDetections[0]);
-      }
-    });
+  Future<void> fetchDetections() async {
+    final data = await DetectionService.fetchDetections();
+    setState(() => currentDetections = data);
+
+    if (data.isNotEmpty && data.first.label != lastDiseaseLabel) {
+      lastDiseaseLabel = data.first.label;
+      final ai = await GeminiService.generateGeminiRecommendation(data.first);
+
+      setState(() => geminiText = ai);
+    }
   }
 
   @override
   void dispose() {
     _detectionTimer?.cancel();
-    _geminiTimer?.cancel();
     super.dispose();
   }
 
-  // ---------------------------------------------
-  // NORMALIZE DETECTION
-  // ---------------------------------------------
-  NormalizedDetection _normalizeMap(Map m) {
-    final label = (m["label"] ?? m["Label"] ?? "Unknown").toString();
-
-    double conf = 0.0;
-    final raw = m["confidence"] ?? m["Confidence"];
-
-    if (raw != null) {
-      if (raw is num) {
-        conf = raw.toDouble();
-        if (conf > 1.0) conf = conf / 100.0;
-      } else {
-        String s = raw.toString().replaceAll("%", "");
-        final p = double.tryParse(s);
-        if (p != null) conf = p > 1.0 ? p / 100.0 : p;
-      }
-    }
-
-    final time = (m["time"] ?? "").toString();
-
-    return NormalizedDetection(label: label, confidence: conf, time: time);
-  }
-
-  // ---------------------------------------------
-  // FETCH DETECTIONS FROM NODE-RED HTTP
-  // ---------------------------------------------
-  Future<void> fetchDetections() async {
-    try {
-      final response = await http.get(
-        Uri.parse("http://192.168.8.76:1880/latest_detection"),
-      );
-
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-
-        if (decoded["status"] == "no_data") {
-          setState(() {
-            currentDetections = [];
-          });
-          return;
-        }
-
-        final detection = NormalizedDetection(
-          label: decoded["message"] ?? "Unknown",
-          confidence: 1.0,
-          time: decoded["timestamp"] ?? "",
-        );
-
-        setState(() {
-          currentDetections = [detection];
-        });
-      }
-    } catch (e) {
-      print("HTTP Fetch Error: $e");
-    }
-  }
-
-  // ---------------------------------------------
-  // GEMINI API CALL
-  // ---------------------------------------------
-  Future<void> generateGeminiRecommendation(NormalizedDetection detection) async {
-    try {
-      final apiKey = "AIzaSyC2Xk6A_6A6IkxhKvfeo-0osIlWZdUCojU"; // <--- Replace with your API key
-      final url = Uri.parse(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey",
-      );
-
-      final prompt = """
-You are an agriculture assistant AI.
-
-Based on the detection below, give a clear recommendation for the farmer:
-Detection: ${detection.label}
-Confidence: ${(detection.confidence * 100).toStringAsFixed(1)}%
-
-Rules:
-- Explain clearly what action should be taken
-- Keep it short (3-5 sentences)
-""";
-
-      final body = jsonEncode({
-        "contents": [
-          {
-            "parts": [
-              {"text": prompt}
-            ]
-          }
-        ]
-      });
-
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: body,
-      );
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        setState(() {
-          geminiText = json["candidates"][0]["content"]["parts"][0]["text"];
-        });
-      } else {
-        print("Gemini API Error: ${response.body}");
-        setState(() {
-          geminiText = "Error generating recommendation.";
-        });
-      }
-    } catch (e) {
-      print("Gemini Exception: $e");
-      setState(() {
-        geminiText = "Error generating recommendation.";
-      });
-    }
-  }
-
-  // ---------------------------------------------
-  // UI
-  // ---------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("AgriSense Live Monitor")),
-      body: Column(
-        children: [
-          // CAMERA STREAM
-          SizedBox(
-            height: 250,
-            width: double.infinity,
-            child: MJPEGStream(url: "http://192.168.8.76:5000/video_feed"),
-          ),
-          const SizedBox(height: 12),
-
-          const Chip(
-            label: Text(
-              "HTTP Connected",
-              style: TextStyle(color: Colors.white),
-            ),
-            backgroundColor: Colors.green,
-          ),
-
-          // REALTIME DETECTIONS
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(children: const [
-              Icon(Icons.eco, color: Colors.green),
-              SizedBox(width: 8),
-              Text("Current Detections",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
-            ]),
-          ),
-
-          Expanded(
-            child: currentDetections.isEmpty
-                ? const Center(child: Text("No detections yet"))
-                : ListView.builder(
-                    itemCount: currentDetections.length,
-                    itemBuilder: (context, i) {
-                      final d = currentDetections[i];
-                      return Card(
-                        child: ListTile(
-                          leading: const Icon(Icons.local_florist,
-                              color: Colors.green),
-                          title: Text(d.label),
+      backgroundColor: Colors.grey.shade50,
+      body: CustomScrollView(
+        slivers: [
+          // Modern App Bar
+SliverToBoxAdapter(
+      child: ModernAppBar(
+        title: "AgriSense Monitor",
+        subtitle: "Real-time Chili Crop Health",
+        icon: Icons.agriculture,
+      ),
+    ),
+    
+          SliverToBoxAdapter(
+            child: SafeArea(
+              bottom: true,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // CAMERA STREAM CARD (Modern)
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Stack(
+                          children: [
+                            SizedBox(
+                              height: 280,
+                              width: double.infinity,
+                              child: MJPEGStream(
+                                url: "http://192.168.8.76:5000/video_feed",
+                              ),
+                            ),
+                            Positioned(
+                              top: 16,
+                              right: 16,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.9),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(
+                                      Icons.circle,
+                                      color: Colors.white,
+                                      size: 10,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      "LIVE",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                  ),
-          ),
+                      ),
+                    ),
 
-          const Divider(),
+                    const SizedBox(height: 28),
 
-          // AI RECOMMENDATIONS
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(children: const [
-              Icon(Icons.lightbulb, color: Colors.orange),
-              SizedBox(width: 8),
-              Text(
-                "AI Recommendations",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ]),
-          ),
+                    // DETECTIONS SECTION
+                    Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade600,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          "Detections",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
 
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              color: Colors.orange.shade50,
-              width: double.infinity,
-              child: Text(
-                geminiText,
-                style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: currentDetections.isEmpty
+                            ? Center(
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.search_off,
+                                      size: 48,
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "No detections yet",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Column(
+                                children: currentDetections.map((d) {
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 10),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.green.shade50,
+                                          Colors.green.shade100,
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: Colors.green.shade200,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.local_florist,
+                                            color: Colors.green.shade700,
+                                            size: 24,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Text(
+                                            d.label,
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.green.shade900,
+                                            ),
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.arrow_forward_ios,
+                                          size: 16,
+                                          color: Colors.green.shade400,
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // AI RECOMMENDATIONS SECTION
+                    Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade600,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          "AI Recommendations",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.orange.shade50,
+                            Colors.yellow.shade50,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orange.withOpacity(0.1),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.lightbulb,
+                                    color: Colors.orange.shade600,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  "AI Insight",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              geminiText,
+                              style: TextStyle(
+                                fontSize: 15,
+                                height: 1.6,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
           ),
@@ -276,9 +478,9 @@ Rules:
   }
 }
 
-// -----------------------------------------------------------
-// MJPEG CAMERA STREAM WIDGET
-// -----------------------------------------------------------
+// -------------------------------------------------------------
+// MJPEG STREAM WIDGET
+// -------------------------------------------------------------
 class MJPEGStream extends StatefulWidget {
   final String url;
   const MJPEGStream({super.key, required this.url});
@@ -317,9 +519,10 @@ class _MJPEGStreamState extends State<MJPEGStream> {
             while (end != -1 && end + 1 < buffer.length) {
               if (buffer[end + 1] == 0xD9) {
                 try {
-                  _currentFrame =
-                      Uint8List.fromList(buffer.sublist(start, end + 2));
-                  setState(() {});
+                  _currentFrame = Uint8List.fromList(
+                    buffer.sublist(start, end + 2),
+                  );
+                  if (mounted) setState(() {});
                 } catch (_) {}
                 buffer = buffer.sublist(end + 2);
                 break;
@@ -347,7 +550,19 @@ class _MJPEGStreamState extends State<MJPEGStream> {
   @override
   Widget build(BuildContext context) {
     return _currentFrame == null
-        ? const Center(child: CircularProgressIndicator())
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(color: Colors.green),
+                const SizedBox(height: 16),
+                Text(
+                  "Connecting to camera...",
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          )
         : Image.memory(
             _currentFrame!,
             gaplessPlayback: true,
@@ -355,3 +570,74 @@ class _MJPEGStreamState extends State<MJPEGStream> {
           );
   }
 }
+
+// -------------------------------------------------------------
+// HISTORY PAGE
+// -------------------------------------------------------------
+class HistoryPage extends StatelessWidget {
+  const HistoryPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: const ModernAppBar(
+        title: "Detection History",
+        subtitle: "Past detections overview",
+        icon: Icons.history,
+      ),
+      body: const Center(
+        child: Text(
+          "History page content here...",
+          style: TextStyle(fontSize: 18),
+        ),
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// SETTINGS PAGE
+// -------------------------------------------------------------
+class SettingsPage extends StatelessWidget {
+  const SettingsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    return Scaffold(
+      appBar: const ModernAppBar(
+        title: "Settings",
+        subtitle: "App preferences & options",
+        icon: Icons.settings,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Appearance",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              title: const Text("Dark Mode"),
+              value: themeProvider.isDarkMode,
+              onChanged: (val) {
+                themeProvider.toggleTheme(val);
+              },
+            ),
+            const SizedBox(height: 20),
+            Text(
+              "Other settings can go here...",
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
