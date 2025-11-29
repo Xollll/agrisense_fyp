@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'pages/settings_page.dart';
 import 'theme/theme_provider.dart';
 import 'package:provider/provider.dart';
-
+import 'history_page.dart';
 import 'theme/theme_service.dart';
 import 'widgets/app_bar.dart';
 import 'detection_service.dart';
@@ -19,7 +19,7 @@ void main() async {
   final savedTheme = await ThemeService.loadThemeMode();
 
   runApp(ChangeNotifierProvider(
-      create: (_) => ThemeProvider()..setTheme(savedTheme),
+      create: (_) => ThemeProvider()..toggleTheme(savedTheme == ThemeMode.dark),
       child: const AgriSenseApp(),
   ),
   );
@@ -85,47 +85,37 @@ class _MainWrapperState extends State<MainWrapper> {
       body: _pages[_selectedIndex],
       extendBody: true,
       bottomNavigationBar: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
+  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+  decoration: BoxDecoration(
+    color: Theme.of(context).colorScheme.surface,
+    borderRadius: BorderRadius.circular(30),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(
+          Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.1
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
-          child: NavigationBar(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (i) => setState(() => _selectedIndex = i),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            indicatorColor: Colors.green.shade100,
-            height: 70,
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: "Dashboard",
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.history_outlined),
-                selectedIcon: Icon(Icons.history),
-                label: "History",
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings),
-                label: "Settings",
-              ),
-            ],
-          ),
-        ),
+        blurRadius: 20,
+        offset: const Offset(0, 10),
       ),
+    ],
+  ),
+  child: ClipRRect(
+    borderRadius: BorderRadius.circular(30),
+    child: NavigationBar(
+      selectedIndex: _selectedIndex,
+      onDestinationSelected: (i) => setState(() => _selectedIndex = i),
+      backgroundColor: Colors.transparent,
+      indicatorColor: Theme.of(context).colorScheme.primaryContainer,
+      height: 70,
+      destinations: const [
+        NavigationDestination(icon: Icon(Icons.home_outlined), label: "Dashboard"),
+        NavigationDestination(icon: Icon(Icons.history_outlined), label: "History"),
+        NavigationDestination(icon: Icon(Icons.settings_outlined), label: "Settings"),
+      ],
+    ),
+  ),
+),
+
     );
   }
 }
@@ -178,7 +168,8 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Theme.of(context).colorScheme.background,
+
       body: CustomScrollView(
         slivers: [
           // Modern App Bar
@@ -273,12 +264,13 @@ SliverToBoxAdapter(
                           ),
                         ),
                         const SizedBox(width: 10),
-                        const Text(
+                        Text(
                           "Detections",
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: Theme.of(context).colorScheme.onBackground,
+
                           ),
                         ),
                       ],
@@ -360,7 +352,8 @@ SliverToBoxAdapter(
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w600,
-                                              color: Colors.green.shade900,
+                                              color: Theme.of(context).colorScheme.onSurface,
+
                                             ),
                                           ),
                                         ),
@@ -391,12 +384,13 @@ SliverToBoxAdapter(
                           ),
                         ),
                         const SizedBox(width: 10),
-                        const Text(
+                        Text(
                           "AI Recommendations",
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: Theme.of(context).colorScheme.onBackground,
+
                           ),
                         ),
                       ],
@@ -458,7 +452,8 @@ SliverToBoxAdapter(
                               style: TextStyle(
                                 fontSize: 15,
                                 height: 1.6,
-                                color: Colors.grey.shade800,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+
                               ),
                             ),
                           ],
@@ -571,73 +566,5 @@ class _MJPEGStreamState extends State<MJPEGStream> {
   }
 }
 
-// -------------------------------------------------------------
-// HISTORY PAGE
-// -------------------------------------------------------------
-class HistoryPage extends StatelessWidget {
-  const HistoryPage({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: const ModernAppBar(
-        title: "Detection History",
-        subtitle: "Past detections overview",
-        icon: Icons.history,
-      ),
-      body: const Center(
-        child: Text(
-          "History page content here...",
-          style: TextStyle(fontSize: 18),
-        ),
-      ),
-    );
-  }
-}
-
-// -------------------------------------------------------------
-// SETTINGS PAGE
-// -------------------------------------------------------------
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
-    return Scaffold(
-      appBar: const ModernAppBar(
-        title: "Settings",
-        subtitle: "App preferences & options",
-        icon: Icons.settings,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Appearance",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            SwitchListTile(
-              title: const Text("Dark Mode"),
-              value: themeProvider.isDarkMode,
-              onChanged: (val) {
-                themeProvider.toggleTheme(val);
-              },
-            ),
-            const SizedBox(height: 20),
-            Text(
-              "Other settings can go here...",
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
