@@ -11,19 +11,34 @@ import 'theme/theme_service.dart';
 import 'widgets/app_bar.dart';
 import 'detection_service.dart';
 import 'gemini_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'services/detection_manager.dart';
+
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load saved theme
   final savedTheme = await ThemeService.loadThemeMode();
 
-  runApp(ChangeNotifierProvider(
-      create: (_) => ThemeProvider()..toggleTheme(savedTheme == ThemeMode.dark),
+  await Supabase.initialize(
+    url: 'https://iwbftcnzcuhdapjxrlhe.supabase.co',
+    anonKey: 'sb_publishable_kKNvrSZqF98IAPkKGW_fdg_GqttByHO',
+  );
+
+  // Start background auto-processing
+  final detectionManager = DetectionManager();
+  detectionManager.startPolling(const Duration(seconds: 10));
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) =>
+          ThemeProvider()..toggleTheme(savedTheme == ThemeMode.dark),
       child: const AgriSenseApp(),
-  ),
+    ),
   );
 }
+
 
 class AgriSenseApp extends StatelessWidget {
   const AgriSenseApp({super.key});
@@ -84,37 +99,58 @@ class _MainWrapperState extends State<MainWrapper> {
     return Scaffold(
       body: _pages[_selectedIndex],
       extendBody: true,
-      bottomNavigationBar: Container(
-  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-  decoration: BoxDecoration(
-    color: Theme.of(context).colorScheme.surface,
-    borderRadius: BorderRadius.circular(30),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withOpacity(
-          Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.1
+      bottomNavigationBar: Padding(
+  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+  child: Container(
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surface.withOpacity(0.95),
+      borderRadius: BorderRadius.circular(26),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(
+            Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.12,
+          ),
+          blurRadius: 22,
+          offset: const Offset(0, 6),
         ),
-        blurRadius: 20,
-        offset: const Offset(0, 10),
-      ),
-    ],
-  ),
-  child: ClipRRect(
-    borderRadius: BorderRadius.circular(30),
-    child: NavigationBar(
-      selectedIndex: _selectedIndex,
-      onDestinationSelected: (i) => setState(() => _selectedIndex = i),
-      backgroundColor: Colors.transparent,
-      indicatorColor: Theme.of(context).colorScheme.primaryContainer,
-      height: 70,
-      destinations: const [
-        NavigationDestination(icon: Icon(Icons.home_outlined), label: "Dashboard"),
-        NavigationDestination(icon: Icon(Icons.history_outlined), label: "History"),
-        NavigationDestination(icon: Icon(Icons.settings_outlined), label: "Settings"),
       ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(26),
+      child: NavigationBar(
+        height: 66,
+        backgroundColor: Colors.transparent,
+        selectedIndex: _selectedIndex,
+        indicatorColor: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7),
+        elevation: 0,
+        animationDuration: const Duration(milliseconds: 300),
+
+        onDestinationSelected: (index) {
+          setState(() => _selectedIndex = index);
+        },
+
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard),
+            label: "Dashboard",
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history_outlined),
+            selectedIcon: Icon(Icons.history),
+            label: "History",
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: "Settings",
+          ),
+        ],
+      ),
     ),
   ),
 ),
+
 
     );
   }
@@ -209,7 +245,7 @@ SliverToBoxAdapter(
                               height: 280,
                               width: double.infinity,
                               child: MJPEGStream(
-                                url: "http://192.168.8.76:5000/video_feed",
+                                url: "http://192.168.8.6:5000/video_feed",
                               ),
                             ),
                             Positioned(

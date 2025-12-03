@@ -12,24 +12,12 @@ class GeminiService {
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey",
       );
 
-final prompt = """
-You are an agriculture assistant AI. Analyze the detection result and provide:
-
-1. A short explanation of the disease (2–3 sentences only).
-2. Actionable recommendations in bullet points (4–6 bullets).
-3. Keep the language simple and suitable for farmers.
-
-Detection details:
-Disease: ${detection.label}
+      final prompt = """
+Detection: ${detection.label}
 Confidence: ${(detection.confidence * 100).toStringAsFixed(1)}%
 
-Formatting rules:
-- No long paragraphs.
-- Give disease explanation first.
-- Followed by bullet-point solutions.
-- No introduction messages.
+Briefly explain the disease (1–2 sentences) and give actionable recommendations in bullets.
 """;
-
 
       final body = jsonEncode({
         "contents": [
