@@ -167,8 +167,12 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   List<NormalizedDetection> currentDetections = [];
-  String geminiText = "Waiting for AI analysis...";
+  String geminiText = "";
   String? lastDiseaseLabel;
+  bool _isLoadingAI = false;
+  
+  // Cache AI recommendations to avoid duplicate API calls
+  final Map<String, String> _aiCache = {};
 
   Timer? _detectionTimer;
 
@@ -186,11 +190,47 @@ class _DashboardPageState extends State<DashboardPage> {
     final data = await DetectionService.fetchDetections();
     setState(() => currentDetections = data);
 
-    if (data.isNotEmpty && data.first.label != lastDiseaseLabel) {
-      lastDiseaseLabel = data.first.label;
-      final ai = await GeminiService.generateGeminiRecommendation(data.first);
+    // No longer auto-generate AI text
+    // User will click "Ask AI" button to get recommendations
+  }
+  
+  Future<void> _requestAIRecommendation() async {
+    if (currentDetections.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No disease detected. Healthy plant!")),
+      );
+      return;
+    }
 
-      setState(() => geminiText = ai);
+    final detection = currentDetections.first;
+    final diseaseLabel = detection.label.toLowerCase();
+
+    // Check if already cached
+    if (_aiCache.containsKey(diseaseLabel)) {
+      setState(() => geminiText = _aiCache[diseaseLabel]!);
+      return;
+    }
+
+    setState(() => _isLoadingAI = true);
+
+    try {
+      final ai = await GeminiService.generateGeminiRecommendation(detection);
+      
+      // Cache the result
+      _aiCache[diseaseLabel] = ai;
+
+      setState(() {
+        geminiText = ai;
+        _isLoadingAI = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingAI = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error getting AI recommendation: $e")),
+        );
+      }
     }
   }
 
@@ -432,69 +472,192 @@ SliverToBoxAdapter(
                     ),
                     const SizedBox(height: 14),
 
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.orange.shade50,
-                            Colors.yellow.shade50,
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.orange.withOpacity(0.1),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    Icons.lightbulb,
-                                    color: Colors.orange.shade600,
-                                    size: 24,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  "AI Insight",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
+                    // Show different content based on detection state
+                    currentDetections.isEmpty
+                        ? Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.green.shade50,
+                                  Colors.green.shade100,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.green.withOpacity(0.1),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 5),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              geminiText,
-                              style: TextStyle(
-                                fontSize: 15,
-                                height: 1.6,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Icon(
+                                          Icons.check_circle,
+                                          color: Colors.green.shade600,
+                                          size: 24,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        "Plant Status",
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    "✅ Your plant looks healthy! No disease detected. Keep up the good care!",
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      height: 1.6,
+                                      color: Colors.green.shade700,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.orange.shade50,
+                                  Colors.yellow.shade50,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.orange.withOpacity(0.1),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Icon(
+                                          Icons.lightbulb,
+                                          color: Colors.orange.shade600,
+                                          size: 24,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Expanded(
+                                        child: Text(
+                                          "Get AI Tips",
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  
+                                  // Show AI recommendation if available
+                                  if (geminiText.isNotEmpty)
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          geminiText,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            height: 1.6,
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                      ],
+                                    ),
+                                  
+                                  // Show button to request AI recommendation
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed: _isLoadingAI ? null : _requestAIRecommendation,
+                                      icon: _isLoadingAI
+                                          ? SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor: AlwaysStoppedAnimation<Color>(
+                                                  Colors.orange.shade600,
+                                                ),
+                                              ),
+                                            )
+                                          : Icon(Icons.auto_awesome, color: Colors.orange.shade600),
+                                      label: Text(
+                                        _isLoadingAI ? 'Getting Tips...' : 'Ask AI for Tips',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.orange.shade600,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  
+                                  if (geminiText.isEmpty && !_isLoadingAI)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 12),
+                                      child: Text(
+                                        "⚠️ Disease detected! Click the button to get AI-powered treatment recommendations.",
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.orange.shade700,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
 
                     const SizedBox(height: 20),
                   ],
