@@ -21,8 +21,9 @@ class SupabaseService {
         'timestamp': ts,
       }).select();
 
-      // Check for errors in the response
-      if (res == null || (res is List && res.isEmpty)) {
+      // Supabase .select() returns a List (empty if no data)
+      final data = res as List<dynamic>;
+      if (data.isEmpty) {
         print('Supabase insert error: No data returned');
         return false;
       }

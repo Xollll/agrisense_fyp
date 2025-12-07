@@ -1,7 +1,6 @@
 // detection_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 
 class NormalizedDetection {
