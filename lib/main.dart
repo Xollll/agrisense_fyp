@@ -171,9 +171,6 @@ class _DashboardPageState extends State<DashboardPage> {
   String? lastDiseaseLabel;
   bool _isLoadingAI = false;
   
-  // Cache AI recommendations to avoid duplicate API calls
-  final Map<String, String> _aiCache = {};
-  
   // Persist last detection even after it's gone
   NormalizedDetection? _lastDetectionPersistent;
   bool _isCurrentlyDetected = false;  // Track if disease is currently active
@@ -220,8 +217,17 @@ class _DashboardPageState extends State<DashboardPage> {
         // Don't clear _lastDetectionPersistent - let user see resolved disease
       }
     });
+    
+    // Auto-trigger recommendation if diseases changed significantly
+    // The hybrid system will:
+    // 1. Check if disease/confidence changed
+    // 2. If yes: generate new recommendation (cache miss)
+    // 3. If no: use cached recommendation (cache hit)
+    // 4. Update UI silently
+    _autoRequestAIRecommendation();
   }
   
+  // User manually requested a fresh recommendation (force refresh)
   Future<void> _requestAIRecommendation() async {
     if (_lastDetectionPersistent == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -235,34 +241,27 @@ class _DashboardPageState extends State<DashboardPage> {
         ? currentDetections
         : [_lastDetectionPersistent!];
 
-    // Create cache key from all disease names combined (sorted for consistency)
-    final diseaseLabels = detectionsToAnalyze
-        .map((d) => d.label.toLowerCase())
-        .toSet()
-        .toList()
-        ..sort();
-    final cacheKey = diseaseLabels.join("|");
-
-    // Check if already cached
-    if (_aiCache.containsKey(cacheKey)) {
-      setState(() => geminiText = _aiCache[cacheKey]!);
-      return;
-    }
-
     setState(() => _isLoadingAI = true);
 
     try {
-      // Get unified recommendation for all detections
+      // User triggered request = FORCE REFRESH (ignore cache)
+      // The hybrid system in GeminiService will:
+      // 1. Build smart cache key (includes disease names + rounded confidence)
+      // 2. Detect if anything changed significantly
+      // 3. If forceRefresh=true, always generate fresh
+      // 4. If unchanged and cached, use cache (but user explicitly requested, so refresh)
       final ai = await GeminiService.generateMultipleRecommendation(
-          detectionsToAnalyze);
+          detectionsToAnalyze,
+          forceRefresh: true); // User explicitly asked for tips
       
-      // Cache the result
-      _aiCache[cacheKey] = ai;
-
       setState(() {
         geminiText = ai;
         _isLoadingAI = false;
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✓ Recommendation updated")),
+      );
     } catch (e) {
       setState(() => _isLoadingAI = false);
       
@@ -271,6 +270,43 @@ class _DashboardPageState extends State<DashboardPage> {
           SnackBar(content: Text("Error getting AI recommendation: $e")),
         );
       }
+    }
+  }
+
+  // Auto-recommendation triggered by detection changes
+  // This is called automatically by the detection loop
+  // The hybrid system will auto-generate only if disease/confidence changed
+  Future<void> _autoRequestAIRecommendation() async {
+    if (_lastDetectionPersistent == null) {
+      // No disease, skip
+      return;
+    }
+
+    final detectionsToAnalyze = currentDetections.isNotEmpty
+        ? currentDetections
+        : [_lastDetectionPersistent!];
+
+    try {
+      // Auto-triggered = let hybrid system decide (don't force refresh)
+      // The system will:
+      // 1. Check if disease/confidence changed significantly
+      // 2. If yes: generate new recommendation
+      // 3. If no: reuse cached recommendation
+      // 4. Either way, update UI without loading spinner
+      final ai = await GeminiService.generateMultipleRecommendation(
+          detectionsToAnalyze,
+          forceRefresh: false); // Auto-triggered, respect cache
+      
+      // Silently update recommendation if it changed
+      if (ai != geminiText) {
+        setState(() {
+          geminiText = ai;
+        });
+        print("✓ Auto-recommendation updated: disease/confidence changed");
+      }
+    } catch (e) {
+      print("Auto-recommendation failed: $e");
+      // Don't show error to user for auto-requests
     }
   }
 

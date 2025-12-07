@@ -4,15 +4,47 @@ import 'package:http/http.dart' as http;
 import 'detection_service.dart';
 
 class GeminiService {
+  // Cache for hybrid recommendations
+  // Key: disease combination + confidence levels (smart key)
+  // Value: cached recommendation
+  static final Map<String, String> _recommendationCache = {};
+  
+  // Track last processed disease combination for auto-detection
+  static String? _lastCacheKey;
+
   // Single detection (kept for backward compatibility)
   static Future<String> generateGeminiRecommendation(
       NormalizedDetection detection) async {
-    return generateMultipleRecommendation([detection]);
+    return generateMultipleRecommendation([detection], forceRefresh: false);
+  }
+
+  // Build smart cache key from disease combination + confidence levels
+  // Rounded to 10% to allow minor confidence fluctuations without cache miss
+  // This enables:
+  // - Cache HIT: when same diseases + similar confidence
+  // - Cache MISS: when diseases change OR confidence changes > 10%
+  static String _buildSmartCacheKey(
+      Map<String, int> uniqueDiseases,
+      Map<String, double> highestConfidence) {
+    final entries = uniqueDiseases.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key)); // Consistent ordering
+    
+    final keyParts = entries.map((e) {
+      final confidence = highestConfidence[e.key] ?? 0.0;
+      // Round confidence to nearest 10% (0.0, 0.1, 0.2, ... 1.0)
+      // This prevents cache misses from tiny confidence fluctuations
+      final confidenceRounded = (confidence * 10).round() / 10;
+      return "${e.key}:${confidenceRounded.toStringAsFixed(1)}";
+    }).toList();
+    
+    return keyParts.join("|");
   }
 
   // Multiple detections - combines all into ONE unified recommendation
+  // [forceRefresh]: if true, ignore cache and always generate fresh recommendation
   static Future<String> generateMultipleRecommendation(
-      List<NormalizedDetection> detections) async {
+      List<NormalizedDetection> detections,
+      {bool forceRefresh = false}) async {
     try {
       // Filter out "healthy" detections
       final diseaseDetections = detections
@@ -39,6 +71,26 @@ class GeminiService {
         }
       }
 
+      // Build smart cache key (includes disease names + rounded confidence)
+      final smartCacheKey = _buildSmartCacheKey(uniqueDiseases, highestConfidence);
+      
+      // Determine if we should use cache or generate fresh recommendation
+      bool shouldGenerateFresh = forceRefresh || // User explicitly requested refresh
+                                 smartCacheKey != _lastCacheKey || // Disease/confidence changed
+                                 !_recommendationCache.containsKey(smartCacheKey); // Not in cache
+      
+      // If cache hit and no force refresh: return cached recommendation
+      if (!shouldGenerateFresh && _recommendationCache.containsKey(smartCacheKey)) {
+        print("✓ Cache HIT: Using cached recommendation for [$smartCacheKey]");
+        _lastCacheKey = smartCacheKey;
+        return _recommendationCache[smartCacheKey]!;
+      }
+      
+      // Cache MISS or FORCE REFRESH: Generate fresh recommendation
+      print("⚠ Cache MISS or FORCE REFRESH: Generating new recommendation");
+      print("   Current key: $smartCacheKey");
+      print("   Last key: $_lastCacheKey");
+      
       // Build disease list for prompt
       final diseaseList = uniqueDiseases.entries
           .map((e) =>
@@ -94,7 +146,15 @@ Keep it brief and practical.""";
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        return json["candidates"][0]["content"]["parts"][0]["text"];
+        final recommendation = json["candidates"][0]["content"]["parts"][0]["text"];
+        
+        // Store in cache for future use
+        _recommendationCache[smartCacheKey] = recommendation;
+        _lastCacheKey = smartCacheKey;
+        
+        print("✓ Recommendation cached for key: $smartCacheKey");
+        
+        return recommendation;
       } else {
         print("Gemini API Error: ${response.body}");
         return "Error generating recommendation.";
