@@ -2,7 +2,26 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
+  // Singleton pattern
+  static final SupabaseService _instance = SupabaseService._internal();
+
+  factory SupabaseService() {
+    return _instance;
+  }
+
+  SupabaseService._internal();
+
   final SupabaseClient _client = Supabase.instance.client;
+
+  // Check if Supabase is properly initialized
+  bool get isInitialized {
+    try {
+      return _client.auth.currentUser != null || true; // True if client exists
+    } catch (e) {
+      print('❌ Supabase not initialized: $e');
+      return false;
+    }
+  }
 
   // Save detection (returns true on success)
   Future<bool> saveDetection({
@@ -14,6 +33,8 @@ class SupabaseService {
     try {
       final ts = timestamp ?? DateTime.now().toIso8601String();
 
+      print('📤 Saving detection: $label (confidence: $confidence)');
+      
       final res = await _client.from('detections').insert({
         'label': label,
         'confidence': confidence,
@@ -24,12 +45,13 @@ class SupabaseService {
       // Supabase .select() returns a List (empty if no data)
       final data = res as List<dynamic>;
       if (data.isEmpty) {
-        print('Supabase insert error: No data returned');
+        print('❌ Supabase insert error: No data returned');
         return false;
       }
+      print('✅ Detection saved successfully');
       return true;
     } catch (e) {
-      print('SupabaseService saveDetection exception: $e');
+      print('❌ SupabaseService.saveDetection error: $e');
       return false;
     }
   }
@@ -37,6 +59,9 @@ class SupabaseService {
   // Return list of maps for UI
   Future<List<Map<String, dynamic>>> getDetectionHistory() async {
     try {
+      print('📊 Fetching detection history from Supabase...');
+      print('📊 Client initialized: $isInitialized');
+      
       final res = await _client
           .from('detections')
           .select()
@@ -44,9 +69,16 @@ class SupabaseService {
 
       // res is typically a List<dynamic>
       final data = res as List<dynamic>? ?? [];
+      print('✅ Fetched ${data.length} detections');
+      
+      if (data.isNotEmpty) {
+        print('📄 Sample detection: ${data.first}');
+      }
+      
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     } catch (e) {
-      print('SupabaseService getDetectionHistory exception: $e');
+      print('❌ SupabaseService.getDetectionHistory error: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
       return [];
     }
   }

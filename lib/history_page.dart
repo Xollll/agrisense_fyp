@@ -1,6 +1,5 @@
 // lib/pages/history_page.dart
 import 'package:flutter/material.dart';
-import '../widgets/app_bar.dart';
 import '../services/supabase_service.dart';
 
 /// Returns the DIAGNOSIS CONFIDENCE color (how sure the model is)
@@ -50,6 +49,22 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage> {
   String _selectedFilter = 'All';
+  late SupabaseService _supabaseService;
+  late Future<List<Map<String, dynamic>>> _detectionHistoryFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _supabaseService = SupabaseService();
+    _detectionHistoryFuture = _supabaseService.getDetectionHistory();
+  }
+
+  // Refresh the detection history
+  void _refreshDetectionHistory() {
+    setState(() {
+      _detectionHistoryFuture = _supabaseService.getDetectionHistory();
+    });
+  }
 
   List<Map<String, dynamic>> _filterDetections(List<Map<String, dynamic>> items) {
     if (_selectedFilter == 'All') return items;
@@ -68,17 +83,74 @@ class _HistoryPageState extends State<HistoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final supabaseService = SupabaseService();
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
-      appBar: const ModernAppBar(
-        title: "Detection History",
-        subtitle: "Your detection records",
-        icon: Icons.history,
+      appBar: AppBar(
+        backgroundColor: Colors.green.shade700,
+        elevation: 0,
+        leading: const SizedBox.shrink(),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green.shade700, Colors.green.shade900],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(25),
+              bottomRight: Radius.circular(25),
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.history, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Detection History",
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "Your detection records",
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.white.withOpacity(0.85),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, color: Colors.white),
+                    onPressed: _refreshDetectionHistory,
+                    tooltip: "Refresh data",
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: supabaseService.getDetectionHistory(),
+        future: _detectionHistoryFuture,
         builder: (context, snapshot) {
           // Loading state
           if (snapshot.connectionState == ConnectionState.waiting) {
