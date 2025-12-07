@@ -173,6 +173,10 @@ class _DashboardPageState extends State<DashboardPage> {
   
   // Cache AI recommendations to avoid duplicate API calls
   final Map<String, String> _aiCache = {};
+  
+  // Persist last detection even after it's gone
+  NormalizedDetection? _lastDetectionPersistent;
+  bool _isCurrentlyDetected = false;  // Track if disease is currently active
 
   Timer? _detectionTimer;
 
@@ -188,36 +192,72 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> fetchDetections() async {
     final data = await DetectionService.fetchDetections();
-    setState(() => currentDetections = data);
-
-    // No longer auto-generate AI text
-    // User will click "Ask AI" button to get recommendations
+    
+    setState(() {
+      currentDetections = data;
+      
+      // Update persistent detection tracking
+      if (data.isNotEmpty) {
+        final newDetection = data.first;
+        
+        // If this is a NEW disease (different from persistent), clear old AI text
+        if (_lastDetectionPersistent != null && 
+            _lastDetectionPersistent!.label != newDetection.label) {
+          geminiText = "";  // Clear old disease's AI tips
+        }
+        
+        // Disease currently detected
+        _lastDetectionPersistent = newDetection;
+        _isCurrentlyDetected = true;
+      } else {
+        // No current detection
+        _isCurrentlyDetected = false;
+        // If no disease was ever detected, clear everything
+        if (_lastDetectionPersistent == null) {
+          geminiText = "";
+        }
+        // If disease disappears but we had one before, keep geminiText for resolved disease
+        // Don't clear _lastDetectionPersistent - let user see resolved disease
+      }
+    });
   }
   
   Future<void> _requestAIRecommendation() async {
-    if (currentDetections.isEmpty) {
+    if (_lastDetectionPersistent == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("No disease detected. Healthy plant!")),
       );
       return;
     }
 
-    final detection = currentDetections.first;
-    final diseaseLabel = detection.label.toLowerCase();
+    // Use ALL current detections (or persistent if none current)
+    final detectionsToAnalyze = currentDetections.isNotEmpty
+        ? currentDetections
+        : [_lastDetectionPersistent!];
+
+    // Create cache key from all disease names combined (sorted for consistency)
+    final diseaseLabels = detectionsToAnalyze
+        .map((d) => d.label.toLowerCase())
+        .toSet()
+        .toList()
+        ..sort();
+    final cacheKey = diseaseLabels.join("|");
 
     // Check if already cached
-    if (_aiCache.containsKey(diseaseLabel)) {
-      setState(() => geminiText = _aiCache[diseaseLabel]!);
+    if (_aiCache.containsKey(cacheKey)) {
+      setState(() => geminiText = _aiCache[cacheKey]!);
       return;
     }
 
     setState(() => _isLoadingAI = true);
 
     try {
-      final ai = await GeminiService.generateGeminiRecommendation(detection);
+      // Get unified recommendation for all detections
+      final ai = await GeminiService.generateMultipleRecommendation(
+          detectionsToAnalyze);
       
       // Cache the result
-      _aiCache[diseaseLabel] = ai;
+      _aiCache[cacheKey] = ai;
 
       setState(() {
         geminiText = ai;
@@ -388,19 +428,24 @@ SliverToBoxAdapter(
                               )
                             : Column(
                                 children: currentDetections.map((d) {
+                                  // Filter out "healthy" detections
+                                  if (d.label.toLowerCase() == "healthy") {
+                                    return const SizedBox.shrink();
+                                  }
+                                  
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 10),
                                     padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: [
-                                          Colors.green.shade50,
-                                          Colors.green.shade100,
+                                          Colors.orange.shade50,
+                                          Colors.orange.shade100,
                                         ],
                                       ),
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(
-                                        color: Colors.green.shade200,
+                                        color: Colors.orange.shade200,
                                         width: 1,
                                       ),
                                     ),
@@ -415,27 +460,42 @@ SliverToBoxAdapter(
                                             ),
                                           ),
                                           child: Icon(
-                                            Icons.local_florist,
-                                            color: Colors.green.shade700,
+                                            Icons.error_outline,
+                                            color: Colors.orange.shade700,
                                             size: 24,
                                           ),
                                         ),
                                         const SizedBox(width: 14),
                                         Expanded(
-                                          child: Text(
-                                            d.label,
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: Theme.of(context).colorScheme.onSurface,
-
-                                            ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                d.label,
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                "${(d.confidence * 100).toStringAsFixed(0)}% confidence",
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                         Icon(
                                           Icons.arrow_forward_ios,
                                           size: 16,
-                                          color: Colors.green.shade400,
+                                          color: Colors.orange.shade400,
                                         ),
                                       ],
                                     ),
@@ -447,119 +507,121 @@ SliverToBoxAdapter(
 
                     const SizedBox(height: 28),
 
-                    // AI RECOMMENDATIONS SECTION
-                    Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade600,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          "AI Recommendations",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onBackground,
-
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-
                     // Show different content based on detection state
-                    currentDetections.isEmpty
-                        ? Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.green.shade50,
-                                  Colors.green.shade100,
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.green.withOpacity(0.1),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ],
+                    if (_lastDetectionPersistent == null)
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.green.shade50,
+                              Colors.green.shade100,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.1),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Icon(
-                                          Icons.check_circle,
-                                          color: Colors.green.shade600,
-                                          size: 24,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Text(
-                                        "Plant Status",
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                    ],
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.check_circle,
+                                      color: Colors.green.shade600,
+                                      size: 24,
+                                    ),
                                   ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    "✅ Your plant looks healthy! No disease detected. Keep up the good care!",
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    "Plant Status",
                                     style: TextStyle(
-                                      fontSize: 15,
-                                      height: 1.6,
-                                      color: Colors.green.shade700,
-                                      fontWeight: FontWeight.w500,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          )
-                        : Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.orange.shade50,
-                                  Colors.yellow.shade50,
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.orange.withOpacity(0.1),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 5),
+                              const SizedBox(height: 16),
+                              Text(
+                                "✅ Your plant looks healthy! No disease detected. Keep up the good care!",
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  height: 1.6,
+                                  color: Colors.green.shade700,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                              ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else ...[
+                      // AI RECOMMENDATIONS SECTION (Only show when disease detected)
+                      Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade600,
+                              borderRadius: BorderRadius.circular(2),
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            "AI Recommendations",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onBackground,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.orange.shade50,
+                              Colors.yellow.shade50,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.orange.withOpacity(0.1),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Row(
                                     children: [
@@ -576,88 +638,137 @@ SliverToBoxAdapter(
                                         ),
                                       ),
                                       const SizedBox(width: 12),
-                                      const Expanded(
-                                        child: Text(
-                                          "Get AI Tips",
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            "Get AI Tips",
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
                                           ),
-                                        ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            // Show count of diseases detected
+                                            currentDetections.isEmpty
+                                                ? _lastDetectionPersistent!.label
+                                                : "${currentDetections.length} issue${currentDetections.length > 1 ? 's' : ''} found",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.orange.shade700,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 16),
-                                  
-                                  // Show AI recommendation if available
-                                  if (geminiText.isNotEmpty)
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          geminiText,
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            height: 1.6,
-                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 16),
-                                      ],
+                                  // Status Badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
                                     ),
-                                  
-                                  // Show button to request AI recommendation
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton.icon(
-                                      onPressed: _isLoadingAI ? null : _requestAIRecommendation,
-                                      icon: _isLoadingAI
-                                          ? SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor: AlwaysStoppedAnimation<Color>(
-                                                  Colors.orange.shade600,
-                                                ),
-                                              ),
-                                            )
-                                          : Icon(Icons.auto_awesome, color: Colors.orange.shade600),
-                                      label: Text(
-                                        _isLoadingAI ? 'Getting Tips...' : 'Ask AI for Tips',
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                    decoration: BoxDecoration(
+                                      color: _isCurrentlyDetected
+                                          ? Colors.red.shade100
+                                          : Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: _isCurrentlyDetected
+                                            ? Colors.red.shade400
+                                            : Colors.grey.shade400,
+                                        width: 1,
                                       ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.orange.shade600,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(vertical: 14),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
+                                    ),
+                                    child: Text(
+                                      _isCurrentlyDetected ? "🔴 Active" : "⏸️ Resolved",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: _isCurrentlyDetected
+                                            ? Colors.red.shade700
+                                            : Colors.grey.shade700,
                                       ),
                                     ),
                                   ),
-                                  
-                                  if (geminiText.isEmpty && !_isLoadingAI)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 12),
-                                      child: Text(
-                                        "⚠️ Disease detected! Click the button to get AI-powered treatment recommendations.",
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.orange.shade700,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    ),
                                 ],
                               ),
-                            ),
+                              const SizedBox(height: 16),
+                              
+                              // Show AI recommendation if available
+                              if (geminiText.isNotEmpty)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      geminiText,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        height: 1.6,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
+                              
+                              // Show button to request AI recommendation
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: _isLoadingAI ? null : _requestAIRecommendation,
+                                  icon: _isLoadingAI
+                                      ? SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              Colors.orange.shade600,
+                                            ),
+                                          ),
+                                        )
+                                      : Icon(Icons.auto_awesome, color: Colors.orange.shade600),
+                                  label: Text(
+                                    _isLoadingAI ? 'Getting Tips...' : 'Ask AI for Tips',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange.shade600,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              
+                              if (geminiText.isEmpty && !_isLoadingAI)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Text(
+                                    _isCurrentlyDetected
+                                        ? "⚠️ Disease detected! Click the button to get AI-powered treatment recommendations."
+                                        : "ℹ️ Disease was detected earlier. Click the button to review AI-powered recommendations.",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.orange.shade700,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 20),
                   ],
