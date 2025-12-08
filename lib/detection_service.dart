@@ -1,8 +1,9 @@
 // detection_service.dart
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'services/http_retry_service.dart';
+import 'services/validation_service.dart';
+import 'config/network_config.dart';
 
 class NormalizedDetection {
   final String label;
@@ -21,10 +22,11 @@ class DetectionService {
     try {
       // Get detection server URL from environment variables
       final serverUrl = dotenv.env['DETECTION_SERVER_URL'] ?? 'http://192.168.8.6:5000';
-      
-      final response = await http.get(
+
+      // ✅ Use retry service with timeout
+      final response = await HttpRetryService.get(
         Uri.parse("$serverUrl/latest_detection"),
-      );
+      ).timeout(NetworkConfig.detectionFetchTimeout);
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
@@ -33,16 +35,26 @@ class DetectionService {
           return [];
         }
 
+        // ✅ Validate response
+        final validation = ValidationService.validateDetectionResponse(decoded);
+
+        if (validation['errors'].isNotEmpty) {
+          print('⚠️ Validation errors: ${validation['errors']}');
+        }
+
         final detection = NormalizedDetection(
-          label: decoded["label"] ?? "Unknown",
-          confidence: decoded["confidence"]?.toDouble() ?? 0.0,
-          time: decoded["timestamp"] ?? "",
+          label: validation['label'] ?? "Unknown",
+          confidence: validation['confidence'] ?? 0.0,
+          time: validation['timestamp'] ?? "",
         );
 
         return [detection];
+      } else {
+        print('❌ Server error: ${response.statusCode}');
+        return [];
       }
     } catch (e) {
-      print("HTTP Fetch Error: $e");
+      print("❌ HTTP Fetch Error: $e");
     }
 
     return [];

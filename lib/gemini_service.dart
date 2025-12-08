@@ -1,15 +1,17 @@
 // gemini_service.dart
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'services/http_retry_service.dart';
+import 'services/validation_service.dart';
 import 'detection_service.dart';
+import 'config/network_config.dart';
 
 class GeminiService {
   // Cache for hybrid recommendations
   // Key: disease combination + confidence levels (smart key)
   // Value: cached recommendation
   static final Map<String, String> _recommendationCache = {};
-  
+
   // Track last processed disease combination for auto-detection
   static String? _lastCacheKey;
 
@@ -24,12 +26,11 @@ class GeminiService {
   // This enables:
   // - Cache HIT: when same diseases + similar confidence
   // - Cache MISS: when diseases change OR confidence changes > 10%
-  static String _buildSmartCacheKey(
-      Map<String, int> uniqueDiseases,
+  static String _buildSmartCacheKey(Map<String, int> uniqueDiseases,
       Map<String, double> highestConfidence) {
     final entries = uniqueDiseases.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key)); // Consistent ordering
-    
+
     final keyParts = entries.map((e) {
       final confidence = highestConfidence[e.key] ?? 0.0;
       // Round confidence to nearest 10% (0.0, 0.1, 0.2, ... 1.0)
@@ -37,7 +38,7 @@ class GeminiService {
       final confidenceRounded = (confidence * 10).round() / 10;
       return "${e.key}:${confidenceRounded.toStringAsFixed(1)}";
     }).toList();
-    
+
     return keyParts.join("|");
   }
 
@@ -64,7 +65,7 @@ class GeminiService {
       for (var detection in diseaseDetections) {
         final label = detection.label.toLowerCase();
         uniqueDiseases[label] = (uniqueDiseases[label] ?? 0) + 1;
-        
+
         // Store highest confidence for each disease
         if (!highestConfidence.containsKey(label) ||
             detection.confidence > highestConfidence[label]!) {
@@ -73,25 +74,28 @@ class GeminiService {
       }
 
       // Build smart cache key (includes disease names + rounded confidence)
-      final smartCacheKey = _buildSmartCacheKey(uniqueDiseases, highestConfidence);
-      
+      final smartCacheKey =
+          _buildSmartCacheKey(uniqueDiseases, highestConfidence);
+
       // Determine if we should use cache or generate fresh recommendation
       bool shouldGenerateFresh = forceRefresh || // User explicitly requested refresh
-                                 smartCacheKey != _lastCacheKey || // Disease/confidence changed
-                                 !_recommendationCache.containsKey(smartCacheKey); // Not in cache
-      
+          smartCacheKey != _lastCacheKey || // Disease/confidence changed
+          !_recommendationCache.containsKey(smartCacheKey); // Not in cache
+
       // If cache hit and no force refresh: return cached recommendation
-      if (!shouldGenerateFresh && _recommendationCache.containsKey(smartCacheKey)) {
-        print("✓ Cache HIT: Using cached recommendation for [$smartCacheKey]");
+      if (!shouldGenerateFresh &&
+          _recommendationCache.containsKey(smartCacheKey)) {
+        print(
+            "✓ Cache HIT: Using cached recommendation for [$smartCacheKey]");
         _lastCacheKey = smartCacheKey;
         return _recommendationCache[smartCacheKey]!;
       }
-      
+
       // Cache MISS or FORCE REFRESH: Generate fresh recommendation
       print("⚠ Cache MISS or FORCE REFRESH: Generating new recommendation");
       print("   Current key: $smartCacheKey");
       print("   Last key: $_lastCacheKey");
-      
+
       // Build disease list for prompt
       final diseaseList = uniqueDiseases.entries
           .map((e) =>
@@ -103,7 +107,7 @@ class GeminiService {
       if (apiKey == null || apiKey.isEmpty) {
         throw Exception('GEMINI_API_KEY not found in .env file');
       }
-      
+
       final url = Uri.parse(
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey",
       );
@@ -134,33 +138,41 @@ Recommended Actions:
 
 Keep it brief and practical.""";
 
-      final body = jsonEncode({
-        "contents": [
-          {
-            "parts": [
-              {"text": prompt}
-            ]
-          }
-        ]
-      });
+      final body = jsonEncode(
+          {"contents": [
+            {
+              "parts": [{"text": prompt}]
+            }
+          ]});
 
-      final response = await http.post(
+      // ✅ Use retry service with timeout
+      final response = await HttpRetryService.post(
         url,
         headers: {"Content-Type": "application/json"},
         body: body,
-      );
+      ).timeout(NetworkConfig.geminiRequestTimeout);
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        final recommendation = json["candidates"][0]["content"]["parts"][0]["text"];
-        
-        // Store in cache for future use
-        _recommendationCache[smartCacheKey] = recommendation;
+        final recommendation =
+            json["candidates"][0]["content"]["parts"][0]["text"];
+
+        // ✅ Validate AI response before caching
+        if (!ValidationService.isValidAIResponse(recommendation)) {
+          print('❌ AI response validation failed');
+          return "Unable to generate valid recommendation. Please try again.";
+        }
+
+        final sanitized =
+            ValidationService.sanitizeAIResponse(recommendation);
+
+        // Store validated response in cache for future use
+        _recommendationCache[smartCacheKey] = sanitized;
         _lastCacheKey = smartCacheKey;
-        
+
         print("✓ Recommendation cached for key: $smartCacheKey");
-        
-        return recommendation;
+
+        return sanitized;
       } else {
         print("Gemini API Error: ${response.body}");
         return "Error generating recommendation.";
@@ -171,3 +183,4 @@ Keep it brief and practical.""";
     }
   }
 }
+

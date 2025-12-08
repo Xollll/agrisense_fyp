@@ -10,8 +10,13 @@ import 'widgets/app_bar.dart';
 import 'detection_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/detection_manager.dart';
+import 'services/local_cache_service.dart';
+import 'services/sync_service.dart';
+import 'providers/app_settings_provider.dart';
+import 'providers/statistics_provider.dart';
 import 'widgets/live_stream_widget.dart';
 import 'widgets/ai_recommendation_widget.dart';
+import 'pages/statistics_page.dart';
 
 
 
@@ -33,15 +38,42 @@ void main() async {
   );
   print('✅ Supabase initialized');
 
+  // ✅ PHASE 1: Initialize local cache service
+  await LocalCacheService.initialize();
+  print('✅ Local cache initialized');
+
+  // ✅ PHASE 1: Initialize sync service
+  final syncService = SyncService();
+  await syncService.initialize();
+  print('✅ Sync service initialized');
+
+  // ✅ PHASE 1: Initialize app settings
+  final appSettings = AppSettingsProvider();
+  await appSettings.initialize();
+  print('✅ App settings initialized');
+
   // Start background auto-processing
   final detectionManager = DetectionManager();
-  detectionManager.startPolling(const Duration(seconds: 10));
+  detectionManager.startPolling(
+    const Duration(seconds: 10),
+    appSettings, // Pass settings to manager
+  );
   print('✅ Detection polling started');
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) =>
-          ThemeProvider()..toggleTheme(savedTheme == ThemeMode.dark),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) =>
+              ThemeProvider()..toggleTheme(savedTheme == ThemeMode.dark),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => appSettings,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => StatisticsProvider(),
+        ),
+      ],
       child: const AgriSenseApp(),
     ),
   );
@@ -98,6 +130,7 @@ class _MainWrapperState extends State<MainWrapper> {
 
   final List<Widget> _pages = [
     DashboardPage(),
+    StatisticsPage(),
     HistoryPage(),
     SettingsPage(),
   ];
@@ -142,6 +175,11 @@ class _MainWrapperState extends State<MainWrapper> {
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard),
             label: "Dashboard",
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.bar_chart),
+            label: "Statistics",
           ),
           NavigationDestination(
             icon: Icon(Icons.history_outlined),
