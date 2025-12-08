@@ -1,6 +1,7 @@
 // gemini_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'detection_service.dart';
 
 class GeminiService {
@@ -97,7 +98,12 @@ class GeminiService {
               "${e.key} (${e.value} detected, ${(highestConfidence[e.key]! * 100).toStringAsFixed(0)}% confidence)")
           .join("\n");
 
-      final apiKey = "AIzaSyC2Xk6A_6A6IkxhKvfeo-0osIlWZdUCojU";
+      // Get API key from environment variables
+      final apiKey = dotenv.env['GEMINI_API_KEY'];
+      if (apiKey == null || apiKey.isEmpty) {
+        throw Exception('GEMINI_API_KEY not found in .env file');
+      }
+      
       final url = Uri.parse(
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey",
       );

@@ -254,7 +254,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     // Live Stream + Detections
                     LiveStreamWidget(
                       detections: _currentDetections,
-                      streamUrl: "http://192.168.8.6:5000/video_feed",
+                      streamUrl: "${dotenv.env['DETECTION_SERVER_URL'] ?? 'http://192.168.8.6:5000'}/video_feed",
                     ),
                     const SizedBox(height: 28),
 
