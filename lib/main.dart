@@ -17,7 +17,7 @@ import 'providers/app_settings_provider.dart';
 import 'providers/statistics_provider.dart';
 import 'widgets/live_stream_widget.dart';
 import 'widgets/ai_recommendation_widget.dart';
-import 'pages/statistics_page.dart';
+import 'pages/statistics_page_redesigned.dart';
 
 
 
@@ -124,7 +124,7 @@ class _MainWrapperState extends State<MainWrapper> {
       title: 'Statistics',
       icon: Icons.bar_chart_outlined,
       selectedIcon: Icons.bar_chart,
-      page: const StatisticsPage(),
+      page: const StatisticsPageRedesigned(),
     ),
     NavigationItem(
       title: 'History',
@@ -157,6 +157,7 @@ class _MainWrapperState extends State<MainWrapper> {
           children: [
             // Modern Drawer Header with Enhanced Design
             Container(
+              width: double.infinity,
               padding: const EdgeInsets.fromLTRB(24, 56, 24, 36),
               decoration: BoxDecoration(
                 gradient: LinearGradient(

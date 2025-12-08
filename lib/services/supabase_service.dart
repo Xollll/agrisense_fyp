@@ -75,7 +75,19 @@ class SupabaseService {
         print('📄 Sample detection: ${data.first}');
       }
       
-      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      // Map field names for compatibility with StatisticsService
+      return data.map((e) {
+        final map = Map<String, dynamic>.from(e as Map);
+        // Map 'label' to 'disease_label' if it exists
+        if (map.containsKey('label') && !map.containsKey('disease_label')) {
+          map['disease_label'] = map['label'];
+        }
+        // Map 'solution' to 'recommendation' if it exists
+        if (map.containsKey('solution') && !map.containsKey('recommendation')) {
+          map['recommendation'] = map['solution'];
+        }
+        return map;
+      }).toList();
     } catch (e) {
       print('❌ SupabaseService.getDetectionHistory error: $e');
       print('❌ Stack trace: ${StackTrace.current}');

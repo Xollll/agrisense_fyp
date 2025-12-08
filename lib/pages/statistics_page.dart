@@ -18,10 +18,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
   @override
   void initState() {
     super.initState();
-    // Refresh statistics when page loads
+    // Load statistics from provider
     Future.microtask(() {
       context.read<StatisticsProvider>().loadStatistics();
     });
+  }
+
+  void _refreshData() async {
+    await context.read<StatisticsProvider>().loadStatistics();
   }
 
   @override
@@ -50,7 +54,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 hasScrollBody: true,
                 child: RefreshIndicator(
                   onRefresh: () async {
-                    await context.read<StatisticsProvider>().loadStatistics();
+                    _refreshData();
                   },
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),

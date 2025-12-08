@@ -1,6 +1,6 @@
 // lib/services/statistics_service.dart
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'supabase_service.dart';
 
 /// Model for disease statistics
 class DiseaseStats {
@@ -27,19 +27,20 @@ class TimelineData {
 
 /// Statistics service for analyzing detection history
 class StatisticsService {
-  static const String _historyKey = 'detection_history';
-  late SharedPreferences _prefs;
+  final SupabaseService _supabaseService = SupabaseService();
 
   Future<void> initialize() async {
-    _prefs = await SharedPreferences.getInstance();
+    // Supabase is initialized globally; no additional setup needed
   }
 
-  /// Get all detection history
+  /// Get all detection history from Supabase
   Future<List<Map<String, dynamic>>> getDetectionHistory() async {
-    final historyJson = _prefs.getStringList(_historyKey) ?? [];
-    return historyJson
-        .map((json) => jsonDecode(json) as Map<String, dynamic>)
-        .toList();
+    try {
+      return await _supabaseService.getDetectionHistory();
+    } catch (e) {
+      print('❌ Error fetching detection history: $e');
+      return [];
+    }
   }
 
   /// Get disease statistics (frequency, percentage)
@@ -198,28 +199,31 @@ class StatisticsService {
     required double confidence,
     required String recommendation,
   }) async {
-    final history = await getDetectionHistory();
-
-    final newDetection = {
-      'disease_label': diseaseLabel,
-      'confidence': confidence,
-      'recommendation': recommendation,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-
-    final updatedHistory = [
-      ...history.map((h) => jsonEncode(h)).toList(),
-      jsonEncode(newDetection),
-    ];
-
-    await _prefs.setStringList(_historyKey, updatedHistory);
-    print('✅ Detection added to history: $diseaseLabel');
+    try {
+      // Save detection via Supabase
+      await _supabaseService.saveDetection(
+        label: diseaseLabel,
+        confidence: confidence,
+        solution: recommendation,
+      );
+      print('✅ Detection added to Supabase: $diseaseLabel');
+    } catch (e) {
+      print('❌ Error adding detection: $e');
+      rethrow;
+    }
   }
 
   /// Clear all history
   Future<void> clearHistory() async {
-    await _prefs.remove(_historyKey);
-    print('🗑️ Detection history cleared');
+    try {
+      // For now, we don't support bulk delete in SupabaseService
+      // This would typically be done via a backend function or direct DB access
+      print('⚠️ Clear history not yet implemented for Supabase');
+      // TODO: Implement bulk delete in SupabaseService if needed
+    } catch (e) {
+      print('❌ Error clearing history: $e');
+      rethrow;
+    }
   }
 
   /// Export statistics as JSON
