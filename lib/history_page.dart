@@ -1,6 +1,7 @@
 // lib/pages/history_page.dart
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
+import '../widgets/app_bar.dart';
 
 /// Returns the DIAGNOSIS CONFIDENCE color (how sure the model is)
 Color _getDiagnosisConfidenceColor(double confidence) {
@@ -86,225 +87,196 @@ class _HistoryPageState extends State<HistoryPage> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
-      appBar: AppBar(
-        backgroundColor: Colors.green.shade700,
-        elevation: 0,
-        leading: const SizedBox.shrink(),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green.shade700, Colors.green.shade900],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(25),
-              bottomRight: Radius.circular(25),
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(Icons.history, color: Colors.white, size: 28),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Detection History",
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "Your detection records",
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.white.withOpacity(0.85),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh, color: Colors.white),
-                    onPressed: _refreshDetectionHistory,
-                    tooltip: "Refresh data",
-                  ),
-                ],
+      body: RefreshIndicator(
+        onRefresh: _refreshWithDelay,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            // Modern App Bar
+            SliverToBoxAdapter(
+              child: ModernAppBar(
+                title: "Detection History",
+                subtitle: "Your detection records",
+                icon: Icons.history,
+                onMenuPressed: () {
+                  Scaffold.of(context).openDrawer();
+                },
               ),
             ),
-          ),
+
+            // Pull-to-Refresh Content
+            SliverFillRemaining(
+              hasScrollBody: true,
+              child: _buildHistoryContent(),
+            ),
+          ],
         ),
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _detectionHistoryFuture,
-        builder: (context, snapshot) {
-          // Loading state
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).primaryColor,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Loading detections...',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            );
-          }
+    );
+  }
 
-          // Empty state
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.history,
-                      size: 50,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    "No detections yet",
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Start scanning plants to build your history",
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
+  Future<void> _refreshWithDelay() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    _refreshDetectionHistory();
+  }
 
-          final detections = snapshot.data!;
-          final filteredDetections = _filterDetections(detections);
-
-          return Column(
-            children: [
-              // Modern filter pills
-              SizedBox(
-                height: 50,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: ['All', 'Healthy', 'Warning', 'Critical']
-                        .map((filter) {
-                      final isSelected = _selectedFilter == filter;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilterChip(
-                          label: Text(
-                            filter,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              color: isSelected ? Colors.white : Colors.grey.shade700,
-                            ),
-                          ),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() => _selectedFilter = filter);
-                          },
-                          backgroundColor: Colors.grey.shade200,
-                          selectedColor: Theme.of(context).primaryColor,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                      );
-                    }).toList(),
+  Widget _buildHistoryContent() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _detectionHistoryFuture,
+      builder: (context, snapshot) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).primaryColor,
                   ),
                 ),
-              ),
-              
-              // Detection count info
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${filteredDetections.length} detection${filteredDetections.length != 1 ? 's' : ''}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                  ],
+                const SizedBox(height: 16),
+                Text(
+                  'Loading detections...',
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-              ),
-
-              // List view
-              Expanded(
-                child: filteredDetections.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No ${_selectedFilter.toLowerCase()} detections',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey,
-                              ),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                        itemCount: filteredDetections.length,
-                        itemBuilder: (context, index) {
-                          final item = filteredDetections[index];
-                          final label = item['label'] ?? 'Unknown';
-                          final confidence = (item['confidence'] is num)
-                              ? (item['confidence'] as num).toDouble()
-                              : double.tryParse('${item['confidence']}') ?? 0.0;
-                          final solution = item['solution'] ?? '';
-                          final timestamp = item['timestamp'] ?? '';
-
-                          return _DetectionCard(
-                            label: label,
-                            confidence: confidence,
-                            timestamp: timestamp,
-                            solution: solution,
-                          );
-                        },
-                      ),
-              ),
-            ],
+              ],
+            ),
           );
-        },
-      ),
+        }
+
+        // Empty state
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.history,
+                    size: 50,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  "No detections yet",
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Start scanning plants to build your history",
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
+
+        final detections = snapshot.data!;
+        final filteredDetections = _filterDetections(detections);
+
+        return Column(
+          children: [
+            // Modern filter pills
+            SizedBox(
+              height: 50,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: ['All', 'Healthy', 'Warning', 'Critical']
+                      .map((filter) {
+                    final isSelected = _selectedFilter == filter;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text(
+                          filter,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: isSelected ? Colors.white : Colors.grey.shade700,
+                          ),
+                        ),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() => _selectedFilter = filter);
+                        },
+                        backgroundColor: Colors.grey.shade200,
+                        selectedColor: Theme.of(context).primaryColor,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            
+            // Detection count info
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${filteredDetections.length} detection${filteredDetections.length != 1 ? 's' : ''}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+
+            // List view
+            Expanded(
+              child: filteredDetections.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No ${_selectedFilter.toLowerCase()} detections',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey,
+                            ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      itemCount: filteredDetections.length,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemBuilder: (context, index) {
+                        final item = filteredDetections[index];
+                        final label = item['label'] ?? 'Unknown';
+                        final confidence = (item['confidence'] is num)
+                            ? (item['confidence'] as num).toDouble()
+                            : double.tryParse('${item['confidence']}') ?? 0.0;
+                        final solution = item['solution'] ?? '';
+                        final timestamp = item['timestamp'] ?? '';
+
+                        return _DetectionCard(
+                          label: label,
+                          confidence: confidence,
+                          timestamp: timestamp,
+                          solution: solution,
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

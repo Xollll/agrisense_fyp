@@ -13,132 +13,144 @@ class SettingsPage extends StatelessWidget {
     final appSettings = Provider.of<AppSettingsProvider>(context);
 
     return Scaffold(
-      appBar: const ModernAppBar(
-        title: "Settings",
-        subtitle: "Customize your experience",
-        icon: Icons.settings,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // ========== APPEARANCE SECTION ==========
-          _buildSectionHeader("Appearance"),
-          SwitchListTile(
-            title: const Text("Dark Mode"),
-            subtitle: const Text("Enable dark theme"),
-            value: themeProvider.isDarkMode,
-            onChanged: (value) {
-              themeProvider.toggleTheme(value);
-            },
-            secondary: const Icon(Icons.dark_mode),
-          ),
-          const Divider(),
-
-          // ========== LIVE DETECTION SECTION ==========
-          _buildSectionHeader("Live Detection"),
-          SwitchListTile(
-            title: const Text("Live Updates"),
-            subtitle: const Text("Real-time disease detection"),
-            value: appSettings.liveUpdatesEnabled,
-            onChanged: (value) async {
-              await appSettings.toggleLiveUpdates(value);
-              if (!value) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('⏸️ Live detection paused')),
-                  );
-                }
-              } else {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('▶️ Live detection resumed')),
-                  );
-                }
-              }
-            },
-            secondary: const Icon(Icons.play_circle),
-          ),
-          ListTile(
-            title: const Text("Update Interval"),
-            subtitle: Text("${appSettings.updateIntervalSeconds}s"),
-            trailing: PopupMenuButton<int>(
-              onSelected: (seconds) {
-                appSettings.setUpdateInterval(seconds);
+      backgroundColor: Theme.of(context).colorScheme.background,
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: ModernAppBar(
+              title: "Settings",
+              subtitle: "Customize your experience",
+              icon: Icons.settings,
+              onMenuPressed: () {
+                Scaffold.of(context).openDrawer();
               },
-              itemBuilder: (context) => [
-                const PopupMenuItem(value: 5, child: Text('5 seconds')),
-                const PopupMenuItem(value: 10, child: Text('10 seconds')),
-                const PopupMenuItem(value: 30, child: Text('30 seconds')),
-                const PopupMenuItem(value: 60, child: Text('1 minute')),
-              ],
-              child: const Icon(Icons.schedule),
             ),
           ),
-          const Divider(),
+          SliverToBoxAdapter(
+            child: ListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              children: [
+                // ========== APPEARANCE SECTION ==========
+                _buildSectionHeader("Appearance"),
+                SwitchListTile(
+                  title: const Text("Dark Mode"),
+                  subtitle: const Text("Enable dark theme"),
+                  value: themeProvider.isDarkMode,
+                  onChanged: (value) {
+                    themeProvider.toggleTheme(value);
+                  },
+                  secondary: const Icon(Icons.dark_mode),
+                ),
+                const Divider(),
 
-          // ========== NOTIFICATIONS SECTION ==========
-          _buildSectionHeader("Notifications"),
-          SwitchListTile(
-            title: const Text("Disease Alerts"),
-            subtitle: const Text("Get notified when diseases are detected"),
-            value: appSettings.notificationsEnabled,
-            onChanged: (value) async {
-              await appSettings.toggleNotifications(value);
-              if (value) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('🔔 Notifications enabled')),
-                  );
-                }
-              } else {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('🔕 Notifications disabled')),
-                  );
-                }
-              }
-            },
-            secondary: const Icon(Icons.notifications_active),
-          ),
-          const Divider(),
-
-          // ========== OFFLINE SECTION ==========
-          _buildSectionHeader("Offline Mode"),
-          SwitchListTile(
-            title: const Text("Use Cached Data"),
-            subtitle: const Text("Access detection history without internet"),
-            value: appSettings.offlineModeEnabled,
-            onChanged: (value) async {
-              await appSettings.toggleOfflineMode(value);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      value
-                          ? '📴 Offline mode enabled'
-                          : '📡 Offline mode disabled',
-                    ),
+                // ========== LIVE DETECTION SECTION ==========
+                _buildSectionHeader("Live Detection"),
+                SwitchListTile(
+                  title: const Text("Live Updates"),
+                  subtitle: const Text("Real-time disease detection"),
+                  value: appSettings.liveUpdatesEnabled,
+                  onChanged: (value) async {
+                    await appSettings.toggleLiveUpdates(value);
+                    if (!value) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('⏸️ Live detection paused')),
+                        );
+                      }
+                    } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('▶️ Live detection resumed')),
+                        );
+                      }
+                    }
+                  },
+                  secondary: const Icon(Icons.play_circle),
+                ),
+                ListTile(
+                  title: const Text("Update Interval"),
+                  subtitle: Text("${appSettings.updateIntervalSeconds}s"),
+                  trailing: PopupMenuButton<int>(
+                    onSelected: (seconds) {
+                      appSettings.setUpdateInterval(seconds);
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(value: 5, child: Text('5 seconds')),
+                      const PopupMenuItem(value: 10, child: Text('10 seconds')),
+                      const PopupMenuItem(value: 30, child: Text('30 seconds')),
+                      const PopupMenuItem(value: 60, child: Text('1 minute')),
+                    ],
+                    child: const Icon(Icons.schedule),
                   ),
-                );
-              }
-            },
-            secondary: const Icon(Icons.cloud_off),
-          ),
-          const Divider(),
+                ),
+                const Divider(),
 
-          // ========== ABOUT SECTION ==========
-          _buildSectionHeader("About"),
-          ListTile(
-            title: const Text("App Version"),
-            subtitle: const Text("1.0.0"),
-            trailing: const Icon(Icons.info),
-          ),
-          ListTile(
-            title: const Text("Help & Support"),
-            onTap: () {
-              _showHelpDialog(context);
-            },
-            trailing: const Icon(Icons.help),
+                // ========== NOTIFICATIONS SECTION ==========
+                _buildSectionHeader("Notifications"),
+                SwitchListTile(
+                  title: const Text("Disease Alerts"),
+                  subtitle: const Text("Get notified when diseases are detected"),
+                  value: appSettings.notificationsEnabled,
+                  onChanged: (value) async {
+                    await appSettings.toggleNotifications(value);
+                    if (value) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('🔔 Notifications enabled')),
+                        );
+                      }
+                    } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('🔕 Notifications disabled')),
+                        );
+                      }
+                    }
+                  },
+                  secondary: const Icon(Icons.notifications_active),
+                ),
+                const Divider(),
+
+                // ========== OFFLINE SECTION ==========
+                _buildSectionHeader("Offline Mode"),
+                SwitchListTile(
+                  title: const Text("Use Cached Data"),
+                  subtitle: const Text("Access detection history without internet"),
+                  value: appSettings.offlineModeEnabled,
+                  onChanged: (value) async {
+                    await appSettings.toggleOfflineMode(value);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            value ? '📴 Offline mode enabled' : '📡 Offline mode disabled',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  secondary: const Icon(Icons.cloud_off),
+                ),
+                const Divider(),
+
+                // ========== ABOUT SECTION ==========
+                _buildSectionHeader("About"),
+                ListTile(
+                  title: const Text("App Version"),
+                  subtitle: const Text("1.0.0"),
+                  trailing: const Icon(Icons.info),
+                ),
+                ListTile(
+                  title: const Text("Help & Support"),
+                  onTap: () {
+                    _showHelpDialog(context);
+                  },
+                  trailing: const Icon(Icons.help),
+                ),
+              ],
+            ),
           ),
         ],
       ),

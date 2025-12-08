@@ -116,8 +116,8 @@ class AgriSenseApp extends StatelessWidget {
 }
 
 // -------------------------------------------------------------
-// MAIN WRAPPER WITH BUBBLE NAVIGATION
-// -------------------------------------------------------------
+// MAIN WRAPPER WITH MINIMALIST DRAWER NAVIGATION
+// Modern UI with navigation drawer instead of bottom nav
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
 
@@ -127,79 +127,295 @@ class MainWrapper extends StatefulWidget {
 
 class _MainWrapperState extends State<MainWrapper> {
   int _selectedIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  final List<Widget> _pages = [
-    DashboardPage(),
-    StatisticsPage(),
-    HistoryPage(),
-    SettingsPage(),
+  final List<NavigationItem> _navItems = [
+    NavigationItem(
+      title: 'Dashboard',
+      icon: Icons.dashboard_outlined,
+      selectedIcon: Icons.dashboard,
+      page: const DashboardPage(),
+    ),
+    NavigationItem(
+      title: 'Statistics',
+      icon: Icons.bar_chart_outlined,
+      selectedIcon: Icons.bar_chart,
+      page: const StatisticsPage(),
+    ),
+    NavigationItem(
+      title: 'History',
+      icon: Icons.history_outlined,
+      selectedIcon: Icons.history,
+      page: const HistoryPage(),
+    ),
+    NavigationItem(
+      title: 'Settings',
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings,
+      page: const SettingsPage(),
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_selectedIndex],
-      extendBody: true,
-      bottomNavigationBar: Padding(
-  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-  child: Container(
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surface.withOpacity(0.95),
-      borderRadius: BorderRadius.circular(26),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(
-            Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.12,
-          ),
-          blurRadius: 22,
-          offset: const Offset(0, 6),
-        ),
-      ],
-    ),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(26),
-      child: NavigationBar(
-        height: 66,
-        backgroundColor: Colors.transparent,
-        selectedIndex: _selectedIndex,
-        indicatorColor: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7),
-        elevation: 0,
-        animationDuration: const Duration(milliseconds: 300),
-
-        onDestinationSelected: (index) {
-          setState(() => _selectedIndex = index);
-        },
-
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: "Dashboard",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: "Statistics",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: "History",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: "Settings",
-          ),
-        ],
-      ),
-    ),
-  ),
-),
-
-
+      key: _scaffoldKey,
+      drawer: _buildModernDrawer(context),
+      body: _navItems[_selectedIndex].page,
     );
   }
+
+  Widget _buildModernDrawer(BuildContext context) {
+    return Drawer(
+      child: Container(
+        color: Theme.of(context).colorScheme.surface,
+        child: Column(
+          children: [
+            // Modern Drawer Header with Enhanced Design
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 56, 24, 36),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.green.shade700,
+                    Colors.green.shade900,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // App Icon with Glassmorphism Effect
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.agriculture,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  
+                  // App Title
+                  const Text(
+                    'AgriSense',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  
+                  // Tagline
+                  Text(
+                    'Crop Health Monitor',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withOpacity(0.85),
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Navigation Items
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                children: List.generate(
+                  _navItems.length,
+                  (index) => _buildNavItem(
+                    context,
+                    index,
+                    _navItems[index],
+                  ),
+                ),
+              ),
+            ),
+
+            // Footer with Version
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.green.shade50,
+                    Colors.green.shade100,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: Colors.green.shade200,
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: Colors.green.shade700,
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Version 1.0.0',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green.shade900,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      Text(
+                        'Latest release',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.green.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(
+    BuildContext context,
+    int index,
+    NavigationItem item,
+  ) {
+    final isSelected = _selectedIndex == index;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.green.shade600.withOpacity(0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          border: isSelected
+              ? Border.all(
+                  color: Colors.green.shade400.withOpacity(0.3),
+                  width: 1.5,
+                )
+              : null,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Colors.green.shade600.withOpacity(0.25)
+                  : Colors.grey.shade200.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              isSelected ? item.selectedIcon : item.icon,
+              color: isSelected
+                  ? Colors.green.shade700
+                  : Colors.grey.shade600,
+              size: 24,
+            ),
+          ),
+          title: Text(
+            item.title,
+            style: TextStyle(
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              fontSize: 15,
+              color: isSelected
+                  ? Colors.green.shade900
+                  : Colors.grey.shade700,
+              letterSpacing: 0.2,
+            ),
+          ),
+          trailing: isSelected
+              ? Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.green.shade600,
+                )
+              : null,
+          onTap: () {
+            setState(() => _selectedIndex = index);
+            Navigator.pop(context); // Close drawer
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// Navigation Item Model
+class NavigationItem {
+  final String title;
+  final IconData icon;
+  final IconData selectedIcon;
+  final Widget page;
+
+  NavigationItem({
+    required this.title,
+    required this.icon,
+    required this.selectedIcon,
+    required this.page,
+  });
 }
 
 // =============================================================
@@ -277,6 +493,9 @@ class _DashboardPageState extends State<DashboardPage> {
               title: "AgriSense Monitor",
               subtitle: "Real-time Chili Crop Health",
               icon: Icons.agriculture,
+              onMenuPressed: () {
+                Scaffold.of(context).openDrawer();
+              },
             ),
           ),
 

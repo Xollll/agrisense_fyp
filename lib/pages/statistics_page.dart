@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/statistics_provider.dart';
 import '../widgets/disease_chart.dart';
+import '../widgets/app_bar.dart';
 import '../services/export_service.dart';
 import '../services/statistics_service.dart';
 
@@ -25,203 +26,234 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Statistics & Analytics'),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              context.read<StatisticsProvider>().loadStatistics();
-            },
+    return Consumer<StatisticsProvider>(
+      builder: (context, provider, _) {
+        return Scaffold(
+          backgroundColor: Theme.of(context).colorScheme.background,
+          body: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // Modern App Bar
+              SliverToBoxAdapter(
+                child: ModernAppBar(
+                  title: "Statistics & Analytics",
+                  subtitle: "Insights into your crops",
+                  icon: Icons.bar_chart,
+                  onMenuPressed: () {
+                    Scaffold.of(context).openDrawer();
+                  },
+                ),
+              ),
+
+              // Pull-to-Refresh with Content
+              SliverFillRemaining(
+                hasScrollBody: true,
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    await context.read<StatisticsProvider>().loadStatistics();
+                  },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: _buildContent(context, provider),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: Consumer<StatisticsProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
+        );
+      },
+    );
+  }
 
-          if (provider.error != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(provider.error!),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<StatisticsProvider>().loadStatistics();
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
+  Widget _buildContent(BuildContext context, StatisticsProvider provider) {
+    if (provider.isLoading) {
+      return const SizedBox(
+        height: 400,
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (provider.error != null) {
+      return SizedBox(
+        height: 400,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(provider.error!),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  context.read<StatisticsProvider>().loadStatistics();
+                },
+                child: const Text('Retry'),
               ),
-            );
-          }
+            ],
+          ),
+        ),
+      );
+    }
 
-          if (provider.summary.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.analytics_outlined, size: 48, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No detection data yet',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Start scanning plants to see statistics',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
+    if (provider.summary.isEmpty) {
+      return SizedBox(
+        height: 400,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.analytics_outlined, size: 48, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                'No detection data yet',
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-            );
-          }
+              const SizedBox(height: 8),
+              Text(
+                'Start scanning plants to see statistics',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Summary Cards
-                _buildSummaryCards(context, provider),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Summary Cards
+          _buildSummaryCards(context, provider),
 
-                const SizedBox(height: 24),
+          const SizedBox(height: 24),
 
-                // Health Meter
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: FutureBuilder<double>(
-                      future: provider.getHealthyPercentage(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const SizedBox(
-                            height: 200,
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-
-                        final healthyPercentage = snapshot.data ?? 0.0;
-                        return HealthMeter(healthyPercentage: healthyPercentage);
-                      },
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Disease Frequency Chart
-                Text(
-                  'Disease Distribution',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: SizedBox(
-                      height: 300,
-                      child: DiseaseFrequencyChart(
-                        diseaseStats: provider.diseaseStats,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Disease Ranking
-                Text(
-                  'Disease Rankings',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: DiseaseRankingTable(
-                      diseaseStats: provider.diseaseStats,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Timeline Chart
-                Text(
-                  'Detection Timeline (Last 30 Days)',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: SizedBox(
-                      height: 300,
-                      child: DetectionTimelineChart(
-                        timelineData: provider.timelineData,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.download),
-                        label: const Text('Export Data'),
-                        onPressed: _showExportOptions,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.delete_outline),
-                        label: const Text('Clear History'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red[400],
-                        ),
-                        onPressed: _showClearConfirmation,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-              ],
+          // Health Meter
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-          );
-        },
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: FutureBuilder<double>(
+                future: provider.getHealthyPercentage(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox(
+                      height: 200,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  final healthyPercentage = snapshot.data ?? 0.0;
+                  return HealthMeter(healthyPercentage: healthyPercentage);
+                },
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Disease Frequency Chart
+          Text(
+            'Disease Distribution',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                height: 300,
+                child: DiseaseFrequencyChart(
+                  diseaseStats: provider.diseaseStats,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Disease Ranking
+          Text(
+            'Disease Rankings',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: DiseaseRankingTable(
+                diseaseStats: provider.diseaseStats,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Timeline Chart
+          Text(
+            'Detection Timeline (Last 30 Days)',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                height: 300,
+                child: DetectionTimelineChart(
+                  timelineData: provider.timelineData,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Action Buttons
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.download),
+                  label: const Text('Export Data'),
+                  onPressed: _showExportOptions,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Clear History'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[400],
+                  ),
+                  onPressed: _showClearConfirmation,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }
