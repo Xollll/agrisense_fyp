@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../theme/theme_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bar.dart';
 import '../widgets/modern_card.dart';
@@ -11,7 +10,6 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     final appSettings = Provider.of<AppSettingsProvider>(context);
 
     return Scaffold(
@@ -34,21 +32,6 @@ class SettingsPage extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               children: [
-                // ========== APPEARANCE SECTION ==========
-                _buildSectionHeader(context, "Appearance"),
-                _buildModernSettingTile(
-                  context,
-                  title: "Dark Mode",
-                  subtitle: "Enable dark theme",
-                  icon: Icons.dark_mode_rounded,
-                  isToggle: true,
-                  value: themeProvider.isDarkMode,
-                  onChanged: (value) {
-                    themeProvider.toggleTheme(value);
-                  },
-                ),
-                const SizedBox(height: 16),
-
                 // ========== LIVE DETECTION SECTION ==========
                 _buildSectionHeader(context, "Live Detection"),
                 _buildModernSettingTile(
@@ -144,14 +127,6 @@ class SettingsPage extends StatelessWidget {
                   title: "App Version",
                   subtitle: "1.0.0",
                   icon: Icons.info_rounded,
-                ),
-                const SizedBox(height: 12),
-                _buildModernSettingTile(
-                  context,
-                  title: "Help & Support",
-                  subtitle: "Get help and support",
-                  icon: Icons.help_rounded,
-                  onTap: () => _showHelpDialog(context),
                 ),
                 const SizedBox(height: 32),
               ],
@@ -283,35 +258,6 @@ class SettingsPage extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showHelpDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Help & Support"),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("📡 Live Detection: Monitor crops in real-time"),
-              SizedBox(height: 12),
-              Text("🔔 Notifications: Get alerts when diseases are detected"),
-              SizedBox(height: 12),
-              Text("📴 Offline Mode: Access history without internet"),
-              SizedBox(height: 12),
-              Text("For more help, contact: support@agrisense.app"),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Close"),
-          ),
-        ],
       ),
     );
   }

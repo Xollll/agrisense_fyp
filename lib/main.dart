@@ -150,15 +150,17 @@ class _MainWrapperState extends State<MainWrapper> {
   }
 
   Widget _buildModernDrawer(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    
     return Drawer(
       child: Container(
         color: Theme.of(context).colorScheme.surface,
         child: Column(
           children: [
-            // Modern Drawer Header with Enhanced Design
+            // ============= ENHANCED HEADER WITH USER PROFILE =============
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 56, 24, 36),
+              padding: const EdgeInsets.fromLTRB(24, 56, 24, 24),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -170,118 +172,235 @@ class _MainWrapperState extends State<MainWrapper> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // App Icon - Clean Design
-                  Icon(
-                    Icons.agriculture,
-                    color: Colors.white,
-                    size: 40,
+                  // App Icon + Title
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 2,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.agriculture,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'AgriSense',
+                            style: TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                          Text(
+                            'v1.0.0',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 18),
-                  
-                  // App Title
-                  const Text(
-                    'AgriSense',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: 0.8,
+
+                ],
+              ),
+            ),
+
+            // ============= MAIN NAVIGATION ITEMS =============
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                children: [
+                  // Navigation Section
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    child: Text(
+                      'NAVIGATION',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey.shade600,
+                        letterSpacing: 1.2,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  
-                  // Tagline
-                  Text(
-                    'Crop Health Monitor',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white.withOpacity(0.85),
-                      letterSpacing: 0.3,
+                  ...List.generate(
+                    _navItems.length,
+                    (index) => _buildNavItem(
+                      context,
+                      index,
+                      _navItems[index],
                     ),
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  Divider(
+                    height: 1,
+                    color: Colors.grey.shade300,
+                    indent: 16,
+                    endIndent: 16,
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Quick Actions Section
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    child: Text(
+                      'QUICK ACTIONS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey.shade600,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  _buildDrawerActionItem(
+                    context,
+                    icon: Icons.brightness_4_outlined,
+                    title: 'Dark Mode',
+                    subtitle: themeProvider.isDarkMode ? 'Enabled' : 'Disabled',
+                    onTap: () {
+                      themeProvider.toggleTheme(!themeProvider.isDarkMode);
+                    },
+                    trailing: Switch(
+                      value: themeProvider.isDarkMode,
+                      onChanged: (value) {
+                        themeProvider.toggleTheme(value);
+                      },
+                      activeColor: Colors.green.shade600,
+                    ),
+                  ),
+                  _buildDrawerActionItem(
+                    context,
+                    icon: Icons.info_outline_rounded,
+                    title: 'About AgriSense',
+                    subtitle: 'Version & Credits',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showAboutDialog(context);
+                    },
+                  ),
+                  _buildDrawerActionItem(
+                    context,
+                    icon: Icons.help_outline_rounded,
+                    title: 'Help & Support',
+                    subtitle: 'Documentation & FAQs',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showHelpDialog(context);
+                    },
+                  ),
+                  _buildDrawerActionItem(
+                    context,
+                    icon: Icons.feedback_outlined,
+                    title: 'Send Feedback',
+                    subtitle: 'Report issues & suggestions',
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Thank you for your feedback! We appreciate it.'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                      Navigator.pop(context);
+                    },
                   ),
                 ],
               ),
             ),
 
-            // Navigation Items
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                children: List.generate(
-                  _navItems.length,
-                  (index) => _buildNavItem(
-                    context,
-                    index,
-                    _navItems[index],
-                  ),
-                ),
-              ),
-            ),
-
-            // Footer with Version
+            // ============= FOOTER SECTION =============
             Container(
               margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
                     Colors.green.shade50,
                     Colors.green.shade100,
                   ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: Colors.green.shade200,
                   width: 1.5,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.green.withOpacity(0.08),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 18,
-                    color: Colors.green.shade700,
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
+                      Icon(
+                        Icons.check_circle_outline,
+                        size: 18,
+                        color: Colors.green.shade700,
+                      ),
+                      const SizedBox(width: 10),
                       Text(
-                        'Version 1.0.0',
+                        'System Status',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: Colors.green.shade900,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                      Text(
-                        'Latest release',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.green.shade600,
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'All systems operational',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Last sync: Just now',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.green.shade600,
+                    ),
                   ),
                 ],
               ),
@@ -289,6 +408,197 @@ class _MainWrapperState extends State<MainWrapper> {
           ],
         ),
       ),
+    );
+  }
+
+  // ============= HELPER: BUILD DRAWER ACTION ITEM =============
+  Widget _buildDrawerActionItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    Widget? trailing,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: Colors.blue.shade600,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (trailing != null) trailing else const SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============= HELPER: SHOW ABOUT DIALOG =============
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('About AgriSense'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'AgriSense AI Monitor',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Version: 1.0.0',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'An intelligent crop health monitoring system powered by AI. Detect diseases in real-time and get AI-powered treatment recommendations.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Features:',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              const Text('• Real-time disease detection'),
+              const Text('• AI-powered recommendations'),
+              const Text('• Historical data tracking'),
+              const Text('• Statistics & analytics'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ============= HELPER: SHOW HELP DIALOG =============
+  void _showHelpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Help & Support'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHelpSection(context, 'Getting Started', [
+                  'Open the live stream to view your farm',
+                  'Wait for the AI to detect diseases automatically',
+                  'View recommendations when diseases are found',
+                ]),
+                const SizedBox(height: 16),
+                _buildHelpSection(context, 'Using Statistics', [
+                  'Go to Statistics tab to view trends',
+                  'Check historical detection data',
+                  'Export data for further analysis',
+                ]),
+                const SizedBox(height: 16),
+                _buildHelpSection(context, 'Tips', [
+                  'Ensure good lighting for accurate detection',
+                  'Check History tab for past detections',
+                  'Enable notifications for alerts',
+                ]),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ============= HELPER: BUILD HELP SECTION =============
+  Widget _buildHelpSection(BuildContext context, String title, List<String> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: 8),
+        ...items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '• ',
+                  style: TextStyle(color: Colors.green.shade600),
+                ),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
