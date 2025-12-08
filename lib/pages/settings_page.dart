@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme_provider.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_bar.dart';
+import '../widgets/modern_card.dart';
 import '../providers/app_settings_provider.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -33,23 +35,28 @@ class SettingsPage extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               children: [
                 // ========== APPEARANCE SECTION ==========
-                _buildSectionHeader("Appearance"),
-                SwitchListTile(
-                  title: const Text("Dark Mode"),
-                  subtitle: const Text("Enable dark theme"),
+                _buildSectionHeader(context, "Appearance"),
+                _buildModernSettingTile(
+                  context,
+                  title: "Dark Mode",
+                  subtitle: "Enable dark theme",
+                  icon: Icons.dark_mode_rounded,
+                  isToggle: true,
                   value: themeProvider.isDarkMode,
                   onChanged: (value) {
                     themeProvider.toggleTheme(value);
                   },
-                  secondary: const Icon(Icons.dark_mode),
                 ),
-                const Divider(),
+                const SizedBox(height: 16),
 
                 // ========== LIVE DETECTION SECTION ==========
-                _buildSectionHeader("Live Detection"),
-                SwitchListTile(
-                  title: const Text("Live Updates"),
-                  subtitle: const Text("Real-time disease detection"),
+                _buildSectionHeader(context, "Live Detection"),
+                _buildModernSettingTile(
+                  context,
+                  title: "Live Updates",
+                  subtitle: "Real-time disease detection",
+                  icon: Icons.play_circle_rounded,
+                  isToggle: true,
                   value: appSettings.liveUpdatesEnabled,
                   onChanged: (value) async {
                     await appSettings.toggleLiveUpdates(value);
@@ -67,31 +74,25 @@ class SettingsPage extends StatelessWidget {
                       }
                     }
                   },
-                  secondary: const Icon(Icons.play_circle),
                 ),
-                ListTile(
-                  title: const Text("Update Interval"),
-                  subtitle: Text("${appSettings.updateIntervalSeconds}s"),
-                  trailing: PopupMenuButton<int>(
-                    onSelected: (seconds) {
-                      appSettings.setUpdateInterval(seconds);
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(value: 5, child: Text('5 seconds')),
-                      const PopupMenuItem(value: 10, child: Text('10 seconds')),
-                      const PopupMenuItem(value: 30, child: Text('30 seconds')),
-                      const PopupMenuItem(value: 60, child: Text('1 minute')),
-                    ],
-                    child: const Icon(Icons.schedule),
-                  ),
+                const SizedBox(height: 12),
+                _buildModernSettingTile(
+                  context,
+                  title: "Update Interval",
+                  subtitle: "${appSettings.updateIntervalSeconds}s",
+                  icon: Icons.schedule_rounded,
+                  onTap: () => _showIntervalMenu(context, appSettings),
                 ),
-                const Divider(),
+                const SizedBox(height: 16),
 
                 // ========== NOTIFICATIONS SECTION ==========
-                _buildSectionHeader("Notifications"),
-                SwitchListTile(
-                  title: const Text("Disease Alerts"),
-                  subtitle: const Text("Get notified when diseases are detected"),
+                _buildSectionHeader(context, "Notifications"),
+                _buildModernSettingTile(
+                  context,
+                  title: "Disease Alerts",
+                  subtitle: "Get notified when diseases are detected",
+                  icon: Icons.notifications_active_rounded,
+                  isToggle: true,
                   value: appSettings.notificationsEnabled,
                   onChanged: (value) async {
                     await appSettings.toggleNotifications(value);
@@ -109,15 +110,17 @@ class SettingsPage extends StatelessWidget {
                       }
                     }
                   },
-                  secondary: const Icon(Icons.notifications_active),
                 ),
-                const Divider(),
+                const SizedBox(height: 16),
 
                 // ========== OFFLINE SECTION ==========
-                _buildSectionHeader("Offline Mode"),
-                SwitchListTile(
-                  title: const Text("Use Cached Data"),
-                  subtitle: const Text("Access detection history without internet"),
+                _buildSectionHeader(context, "Offline Mode"),
+                _buildModernSettingTile(
+                  context,
+                  title: "Use Cached Data",
+                  subtitle: "Access detection history without internet",
+                  icon: Icons.cloud_off_rounded,
+                  isToggle: true,
                   value: appSettings.offlineModeEnabled,
                   onChanged: (value) async {
                     await appSettings.toggleOfflineMode(value);
@@ -131,24 +134,26 @@ class SettingsPage extends StatelessWidget {
                       );
                     }
                   },
-                  secondary: const Icon(Icons.cloud_off),
                 ),
-                const Divider(),
+                const SizedBox(height: 16),
 
                 // ========== ABOUT SECTION ==========
-                _buildSectionHeader("About"),
-                ListTile(
-                  title: const Text("App Version"),
-                  subtitle: const Text("1.0.0"),
-                  trailing: const Icon(Icons.info),
+                _buildSectionHeader(context, "About"),
+                _buildModernSettingTile(
+                  context,
+                  title: "App Version",
+                  subtitle: "1.0.0",
+                  icon: Icons.info_rounded,
                 ),
-                ListTile(
-                  title: const Text("Help & Support"),
-                  onTap: () {
-                    _showHelpDialog(context);
-                  },
-                  trailing: const Icon(Icons.help),
+                const SizedBox(height: 12),
+                _buildModernSettingTile(
+                  context,
+                  title: "Help & Support",
+                  subtitle: "Get help and support",
+                  icon: Icons.help_rounded,
+                  onTap: () => _showHelpDialog(context),
                 ),
+                const SizedBox(height: 32),
               ],
             ),
           ),
@@ -157,15 +162,126 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(BuildContext context, String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       child: Text(
         title,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey.shade600,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+              letterSpacing: 0.2,
+            ),
+      ),
+    );
+  }
+
+  Widget _buildModernSettingTile(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    bool isToggle = false,
+    bool value = false,
+    ValueChanged<bool>? onChanged,
+    VoidCallback? onTap,
+  }) {
+    return ModernCard(
+      onTap: isToggle ? null : onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              color: AppColors.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          if (isToggle)
+            Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Switch(
+                value: value,
+                onChanged: onChanged,
+                activeColor: AppColors.primary,
+              ),
+            )
+          else
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: Theme.of(context).textTheme.bodySmall?.color,
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showIntervalMenu(BuildContext context, AppSettingsProvider appSettings) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Update Interval"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('5 seconds'),
+              onTap: () {
+                appSettings.setUpdateInterval(5);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text('10 seconds'),
+              onTap: () {
+                appSettings.setUpdateInterval(10);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text('30 seconds'),
+              onTap: () {
+                appSettings.setUpdateInterval(30);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text('1 minute'),
+              onTap: () {
+                appSettings.setUpdateInterval(60);
+                Navigator.pop(context);
+              },
+            ),
+          ],
         ),
       ),
     );

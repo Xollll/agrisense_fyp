@@ -12,7 +12,7 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.title,
     this.subtitle,
     this.icon,
-    this.height = 110,
+    this.height = 105,
     this.onMenuPressed,
   });
 
@@ -25,62 +25,50 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
       height: height,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.green.shade600, Colors.green.shade800],
+          colors: [
+            Colors.green.shade500,
+            Colors.green.shade700,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withOpacity(0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: Colors.green.withOpacity(0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          // Hamburger Menu Button with Glassmorphism
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.menu, color: Colors.white, size: 26),
-              onPressed: onMenuPressed,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              tooltip: 'Open menu',
-            ),
+          // Hamburger Menu Button - Clean Design
+          IconButton(
+            icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 26),
+            onPressed: onMenuPressed,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            tooltip: 'Open menu',
+            splashRadius: 24,
           ),
           
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
 
-          // Icon Container
+          // Icon with subtle background
           if (icon != null)
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 1,
-                ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Icon(
+                icon,
+                color: Colors.white.withOpacity(0.95),
+                size: 28,
               ),
-              child: Icon(icon, color: Colors.white, size: 28),
             ),
-          
-          if (icon != null) const SizedBox(width: 14),
 
           /// Title and Subtitle Column
           Expanded(
@@ -92,22 +80,22 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
                     color: Colors.white,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.3,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     subtitle!,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w400,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withOpacity(0.85),
                       letterSpacing: 0.2,
                     ),
                     maxLines: 1,

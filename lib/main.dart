@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'pages/settings_page.dart';
 import 'theme/theme_provider.dart';
+import 'theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'history_page.dart';
 import 'theme/theme_service.dart';
@@ -90,25 +91,8 @@ class AgriSenseApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'AgriSense AI Monitor',
-
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-    seedColor: Colors.green,
-    brightness: Brightness.light, // set here instead of ThemeData.brightness
-  ),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-      ),
-
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-    seedColor: Colors.green,
-    brightness: Brightness.dark, // set here
-  ),
-
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-      ),
+      theme: AppTheme.lightTheme(),
+      darkTheme: AppTheme.darkTheme(),
       themeMode: themeProvider.themeMode,
       home: const MainWrapper(),
     );
@@ -194,29 +178,11 @@ class _MainWrapperState extends State<MainWrapper> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // App Icon with Glassmorphism Effect
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.agriculture,
-                      color: Colors.white,
-                      size: 36,
-                    ),
+                  // App Icon - Clean Design
+                  Icon(
+                    Icons.agriculture,
+                    color: Colors.white,
+                    size: 40,
                   ),
                   const SizedBox(height: 18),
                   
