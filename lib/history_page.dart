@@ -50,6 +50,13 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage> {
   String _selectedFilter = 'All';
+  String _searchQuery = '';
+  String _sortBy = 'Newest'; // Newest, Oldest, Confidence
+  bool _expandedToday = true;
+  bool _expandedThisWeek = true;
+  bool _expandedThisMonth = true;
+  bool _expandedOlder = false;
+  
   late SupabaseService _supabaseService;
   late Future<List<Map<String, dynamic>>> _detectionHistoryFuture;
 
@@ -68,18 +75,98 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   List<Map<String, dynamic>> _filterDetections(List<Map<String, dynamic>> items) {
-    if (_selectedFilter == 'All') return items;
+    var filtered = items.toList();
     
-    return items.where((item) {
-      final confidence = (item['confidence'] is num)
-          ? (item['confidence'] as num).toDouble()
-          : double.tryParse('${item['confidence']}') ?? 0.0;
-      
-      if (_selectedFilter == 'Healthy') return confidence >= 0.75;
-      if (_selectedFilter == 'Warning') return confidence >= 0.5 && confidence < 0.75;
-      if (_selectedFilter == 'Critical') return confidence < 0.5;
-      return false;
-    }).toList();
+    // Apply filter
+    if (_selectedFilter != 'All') {
+      filtered = filtered.where((item) {
+        final confidence = (item['confidence'] is num)
+            ? (item['confidence'] as num).toDouble()
+            : double.tryParse('${item['confidence']}') ?? 0.0;
+        
+        if (_selectedFilter == 'Healthy') return confidence >= 0.75;
+        if (_selectedFilter == 'Warning') return confidence >= 0.5 && confidence < 0.75;
+        if (_selectedFilter == 'Critical') return confidence < 0.5;
+        return false;
+      }).toList();
+    }
+    
+    // Apply search
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((item) {
+        final label = (item['label'] ?? '').toString().toLowerCase();
+        return label.contains(_searchQuery.toLowerCase());
+      }).toList();
+    }
+    
+    // Apply sorting
+    if (_sortBy == 'Newest') {
+      filtered.sort((a, b) => (b['timestamp'] ?? '').toString().compareTo((a['timestamp'] ?? '').toString()));
+    } else if (_sortBy == 'Oldest') {
+      filtered.sort((a, b) => (a['timestamp'] ?? '').toString().compareTo((b['timestamp'] ?? '').toString()));
+    } else if (_sortBy == 'Confidence') {
+      filtered.sort((a, b) {
+        final confA = (a['confidence'] is num)
+            ? (a['confidence'] as num).toDouble()
+            : double.tryParse('${a['confidence']}') ?? 0.0;
+        final confB = (b['confidence'] is num)
+            ? (b['confidence'] as num).toDouble()
+            : double.tryParse('${b['confidence']}') ?? 0.0;
+        return confB.compareTo(confA);
+      });
+    }
+    
+    return filtered;
+  }
+
+  Map<String, List<Map<String, dynamic>>> _groupDetectionsByDate(List<Map<String, dynamic>> items) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekAgo = today.subtract(const Duration(days: 7));
+    final monthAgo = today.subtract(const Duration(days: 30));
+
+    final grouped = <String, List<Map<String, dynamic>>>{
+      'Today': [],
+      'This Week': [],
+      'This Month': [],
+      'Older': [],
+    };
+
+    for (var item in items) {
+      try {
+        final timestamp = item['timestamp'] as String?;
+        if (timestamp == null || timestamp.isEmpty) continue;
+        
+        final dateStr = timestamp.contains('T') ? timestamp.split('T')[0] : timestamp;
+        final itemDate = DateTime.parse(dateStr);
+        final itemDateOnly = DateTime(itemDate.year, itemDate.month, itemDate.day);
+
+        if (itemDateOnly == today) {
+          grouped['Today']!.add(item);
+        } else if (itemDateOnly.isAfter(weekAgo)) {
+          grouped['This Week']!.add(item);
+        } else if (itemDateOnly.isAfter(monthAgo)) {
+          grouped['This Month']!.add(item);
+        } else {
+          grouped['Older']!.add(item);
+        }
+      } catch (e) {
+        grouped['Older']!.add(item);
+      }
+    }
+
+    return grouped;
+  }
+
+  String _getDiseaseCountSummary(List<Map<String, dynamic>> items) {
+    final Set<String> uniqueDiseases = {};
+    for (var item in items) {
+      final label = (item['label'] ?? '').toString().toLowerCase();
+      if (label.isNotEmpty && !label.contains('healthy')) {
+        uniqueDiseases.add(label);
+      }
+    }
+    return '${uniqueDiseases.length} disease${uniqueDiseases.length != 1 ? 's' : ''}';
   }
 
   @override
@@ -186,97 +273,308 @@ class _HistoryPageState extends State<HistoryPage> {
 
         final detections = snapshot.data!;
         final filteredDetections = _filterDetections(detections);
+        final groupedDetections = _groupDetectionsByDate(filteredDetections);
 
         return Column(
           children: [
-            // Modern filter pills
-            SizedBox(
-              height: 50,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            // Quick Stats Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).primaryColor.withOpacity(0.15),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Row(
-                  children: ['All', 'Healthy', 'Warning', 'Critical']
-                      .map((filter) {
-                    final isSelected = _selectedFilter == filter;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: Text(
-                          filter,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: isSelected ? Colors.white : Colors.grey.shade700,
-                          ),
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Column(
+                      children: [
+                        Text(
+                          '${filteredDetections.length}',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).primaryColor,
+                              ),
                         ),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          setState(() => _selectedFilter = filter);
-                        },
-                        backgroundColor: Colors.grey.shade200,
-                        selectedColor: Theme.of(context).primaryColor,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                    );
-                  }).toList(),
+                        Text(
+                          'Detections',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: Colors.grey,
+                              ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      width: 1,
+                      height: 40,
+                      color: Theme.of(context).primaryColor.withOpacity(0.2),
+                    ),
+                    Column(
+                      children: [
+                        Text(
+                          _getDiseaseCountSummary(filteredDetections),
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                        ),
+                        Text(
+                          'Found',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: Colors.grey,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
-            
-            // Detection count info
+
+            // Search & Filter Section
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '${filteredDetections.length} detection${filteredDetections.length != 1 ? 's' : ''}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w500,
+                  // Search Bar
+                  TextField(
+                    onChanged: (value) {
+                      setState(() => _searchQuery = value);
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search disease...',
+                      prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? GestureDetector(
+                              onTap: () => setState(() => _searchQuery = ''),
+                              child: Icon(Icons.clear, color: Colors.grey.shade600),
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // Filter & Sort Row
+                  Row(
+                    children: [
+                      // Filter Chips
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: ['All', 'Healthy', 'Warning', 'Critical']
+                                .map((filter) {
+                              final isSelected = _selectedFilter == filter;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: FilterChip(
+                                  label: Text(
+                                    filter,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                      color: isSelected ? Colors.white : Colors.grey.shade700,
+                                    ),
+                                  ),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    setState(() => _selectedFilter = filter);
+                                  },
+                                  backgroundColor: Colors.grey.shade200,
+                                  selectedColor: Theme.of(context).primaryColor,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                ),
+                              );
+                            }).toList(),
+                          ),
                         ),
+                      ),
+                      // Sort Dropdown
+                      SizedBox(
+                        width: 110,
+                        child: DropdownButton<String>(
+                          value: _sortBy,
+                          isExpanded: true,
+                          underline: const SizedBox(),
+                          items: ['Newest', 'Oldest', 'Confidence']
+                              .map((sort) => DropdownMenuItem(
+                                    value: sort,
+                                    child: Text(
+                                      sort,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ))
+                              .toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _sortBy = value);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
 
-            // List view
+            // Timeline grouped detections
             Expanded(
               child: filteredDetections.isEmpty
                   ? Center(
                       child: Text(
-                        'No ${_selectedFilter.toLowerCase()} detections',
+                        'No detections found',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Colors.grey,
                             ),
                       ),
                     )
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      itemCount: filteredDetections.length,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemBuilder: (context, index) {
-                        final item = filteredDetections[index];
-                        final label = item['label'] ?? 'Unknown';
-                        final confidence = (item['confidence'] is num)
-                            ? (item['confidence'] as num).toDouble()
-                            : double.tryParse('${item['confidence']}') ?? 0.0;
-                        final solution = item['solution'] ?? '';
-                        final timestamp = item['timestamp'] ?? '';
-
-                        return _DetectionCard(
-                          label: label,
-                          confidence: confidence,
-                          timestamp: timestamp,
-                          solution: solution,
-                        );
-                      },
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      child: Column(
+                        children: [
+                        // Today Section
+                        if (groupedDetections['Today']!.isNotEmpty)
+                          _buildDateSection(
+                            context,
+                            'Today',
+                            groupedDetections['Today']!,
+                            _expandedToday,
+                            (value) => setState(() => _expandedToday = value),
+                          ),
+                        // This Week Section
+                        if (groupedDetections['This Week']!.isNotEmpty)
+                          _buildDateSection(
+                            context,
+                            'This Week',
+                            groupedDetections['This Week']!,
+                            _expandedThisWeek,
+                            (value) => setState(() => _expandedThisWeek = value),
+                          ),
+                        // This Month Section
+                        if (groupedDetections['This Month']!.isNotEmpty)
+                          _buildDateSection(
+                            context,
+                            'This Month',
+                            groupedDetections['This Month']!,
+                            _expandedThisMonth,
+                            (value) => setState(() => _expandedThisMonth = value),
+                          ),
+                        // Older Section
+                        if (groupedDetections['Older']!.isNotEmpty)
+                          _buildDateSection(
+                            context,
+                            'Older',
+                            groupedDetections['Older']!,
+                            _expandedOlder,
+                            (value) => setState(() => _expandedOlder = value),
+                          ),
+                        ],
+                      ),
                     ),
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildDateSection(
+    BuildContext context,
+    String title,
+    List<Map<String, dynamic>> items,
+    bool isExpanded,
+    Function(bool) onExpandChanged,
+  ) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () => onExpandChanged(!isExpanded),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 18,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).primaryColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${items.length}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Icon(
+                  isExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: Theme.of(context).primaryColor,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (isExpanded) ...[
+          const SizedBox(height: 8),
+          ...items.map((item) {
+            final label = item['label'] ?? 'Unknown';
+            final confidence = (item['confidence'] is num)
+                ? (item['confidence'] as num).toDouble()
+                : double.tryParse('${item['confidence']}') ?? 0.0;
+            final solution = item['solution'] ?? '';
+            final timestamp = item['timestamp'] ?? '';
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _DetectionCard(
+                label: label,
+                confidence: confidence,
+                timestamp: timestamp,
+                solution: solution,
+              ),
+            );
+          }).toList(),
+          const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 }

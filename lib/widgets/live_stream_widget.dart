@@ -129,12 +129,11 @@ class LiveStreamWidget extends StatelessWidget {
         const SizedBox(height: 14),
 
         // DETECTIONS LIST
-        ModernCard(
-          child: detections.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
+        detections.isEmpty
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 30),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.check_circle_outline,
@@ -153,94 +152,71 @@ class LiveStreamWidget extends StatelessWidget {
                       ),
                     ],
                   ),
-                )
-              : Column(
-                  children: detections
-                      .where((d) => d.label.toLowerCase() != "healthy")
-                      .map(
-                        (d) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  AppColors.warning.withOpacity(0.08),
-                                  AppColors.warning.withOpacity(0.04),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: AppColors.warning.withOpacity(0.2),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
+                ),
+              )
+            : Column(
+                children: detections
+                    .where((d) => d.label.toLowerCase() != "healthy")
+                    .map(
+                      (d) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.warning.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    Icons.warning_rounded,
-                                    color: AppColors.warning,
-                                    size: 20,
-                                  ),
+                                Text(
+                                  d.label,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ),
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        d.label,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Container(
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.warning
-                                              .withOpacity(0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(2),
-                                        ),
-                                        clipBehavior: Clip.antiAlias,
-                                        child: FractionallySizedBox(
-                                          widthFactor: d.confidence,
-                                          child: Container(
-                                            color: AppColors.warning,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "${(d.confidence * 100).toStringAsFixed(1)}% confidence",
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall,
-                                      ),
-                                    ],
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.warning.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: AppColors.warning.withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    "${(d.confidence * 100).toStringAsFixed(0)}%",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.warning,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: LinearProgressIndicator(
+                                value: d.confidence,
+                                minHeight: 6,
+                                backgroundColor: AppColors.warning.withOpacity(0.15),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.warning,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      )
-                      .toList(),
-                ),
-        ),
+                      ),
+                    )
+                    .toList(),
+              ),
       ],
     );
   }
