@@ -103,7 +103,7 @@ class _FloatingMenuButtonState extends State<FloatingMenuButton>
 
         // Menu Panel - Vertical icons above FAB with page names
         Positioned(
-          bottom: 30,
+          bottom: 100,
           right: 30,
           child: GestureDetector(
             onTap: () {}, // Prevent dismissing menu when tapping on menu items
@@ -111,7 +111,70 @@ class _FloatingMenuButtonState extends State<FloatingMenuButton>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Page Navigation Icons (Vertical Stack)
+                // Quick Actions Section (FIRST - Above Page Icons)
+                if (widget.quickActions.isNotEmpty)
+                  SlideTransition(
+                    position: Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+                        .animate(CurvedAnimation(
+                          parent: _menuController,
+                          curve: Curves.easeOut,
+                        )),
+                    child: FadeTransition(
+                      opacity: _menuController,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildGlassmorphicContainer(
+                          isDark: isDark,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.flash_on_rounded,
+                                      size: 16,
+                                      color: Colors.amber.shade400,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Quick Actions',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.5,
+                                        color: isDark
+                                            ? Colors.grey.shade300
+                                            : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: widget.quickActions
+                                    .asMap()
+                                    .entries
+                                    .map((e) => _buildQuickActionButton(
+                                      context,
+                                      e.value,
+                                      isDark,
+                                    ))
+                                    .toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Page Navigation Icons (Vertical Stack - BELOW Quick Actions)
                 SlideTransition(
                   position: Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
                       .animate(CurvedAnimation(parent: _menuController, curve: Curves.easeOut)),
@@ -196,69 +259,6 @@ class _FloatingMenuButtonState extends State<FloatingMenuButton>
                     ),
                   ),
                 ),
-
-                // Quick Actions Section
-                if (widget.quickActions.isNotEmpty)
-                  SlideTransition(
-                    position: Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
-                        .animate(CurvedAnimation(
-                          parent: _menuController,
-                          curve: Curves.easeOut,
-                        )),
-                    child: FadeTransition(
-                      opacity: _menuController,
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildGlassmorphicContainer(
-                          isDark: isDark,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.flash_on_rounded,
-                                      size: 16,
-                                      color: Colors.amber.shade400,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Quick Actions',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.5,
-                                        color: isDark
-                                            ? Colors.grey.shade300
-                                            : Colors.grey.shade700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: widget.quickActions
-                                    .asMap()
-                                    .entries
-                                    .map((e) => _buildQuickActionButton(
-                                      context,
-                                      e.value,
-                                      isDark,
-                                    ))
-                                    .toList(),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
