@@ -492,86 +492,85 @@ class _ModernAnimatedAppBarState extends State<ModernAnimatedAppBar>
           final shake = math.sin(_notificationShakeController.value * math.pi * 4) * 3;
           return Transform.translate(
             offset: Offset(shake, 0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.25),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.25),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Bell Icon
-                    const Icon(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(
                       Icons.notifications_rounded,
                       color: Colors.white,
                       size: 20,
                     ),
+                  ),
+                ),
 
-                    // Notification Badge with Pulse Animation
-                    if (widget.notificationCount > 0)
-                      Positioned(
-                        top: -6,
-                        right: -6,
-                        child: AnimatedBuilder(
-                          animation: _pulseAnimationController,
-                          builder: (context, child) {
-                            final scale = 1.0 + (_pulseAnimationController.value * 0.1);
-                            return Transform.scale(
-                              scale: scale,
-                              child: Container(
-                                width: 22,
-                                height: 22,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.red.shade500,
-                                      Colors.pink.shade500,
-                                    ],
-                                  ),
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.red.withOpacity(0.5),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1.5,
-                                  ),
+                // Notification Badge - Outside and Top Right
+                if (widget.notificationCount > 0)
+                  Positioned(
+                    top: -10,
+                    right: -10,
+                    child: AnimatedBuilder(
+                      animation: _pulseAnimationController,
+                      builder: (context, child) {
+                        final scale = 1.0 + (_pulseAnimationController.value * 0.1);
+                        return Transform.scale(
+                          scale: scale,
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.red.shade500,
+                                  Colors.pink.shade500,
+                                ],
+                              ),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.withOpacity(0.5),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
                                 ),
-                                child: Center(
-                                  child: Text(
-                                    widget.notificationCount.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
+                              ],
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                widget.notificationCount.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
             ),
           );
         },
