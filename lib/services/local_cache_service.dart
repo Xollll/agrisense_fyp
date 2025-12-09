@@ -8,7 +8,6 @@ class LocalCacheService {
   static late SharedPreferences _prefs;
 
   static const String _detectionsCacheKey = 'cached_detections';
-  static const String _settingsCacheKey = 'cached_settings';
   static const String _syncQueueKey = 'sync_queue';
   static const String _lastSyncTimeKey = 'last_sync_time';
 
