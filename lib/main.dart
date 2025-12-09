@@ -8,6 +8,7 @@ import 'theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'theme/theme_service.dart';
 import 'widgets/enhanced_app_bar.dart';
+import 'widgets/floating_menu_button.dart';
 import 'detection_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/detection_manager.dart';
@@ -101,8 +102,8 @@ class AgriSenseApp extends StatelessWidget {
 }
 
 // -------------------------------------------------------------
-// MAIN WRAPPER WITH MINIMALIST DRAWER NAVIGATION
-// Modern UI with navigation drawer instead of bottom nav
+// MAIN WRAPPER WITH FLOATING MENU NAVIGATION
+// Modern UI with beautiful floating action menu
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
 
@@ -112,7 +113,6 @@ class MainWrapper extends StatefulWidget {
 
 class _MainWrapperState extends State<MainWrapper> {
   int _selectedIndex = 0;
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final List<NavigationItem> _navItems = [
     NavigationItem(
@@ -143,335 +143,55 @@ class _MainWrapperState extends State<MainWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: _buildModernDrawer(context),
-      body: _navItems[_selectedIndex].page,
-    );
-  }
-
-  Widget _buildModernDrawer(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    
-    return Drawer(
-      child: Container(
-        color: Theme.of(context).colorScheme.surface,
-        child: Column(
-          children: [
-            // ============= ENHANCED HEADER WITH USER PROFILE =============
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 56, 24, 24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.green.shade700,
-                    Colors.green.shade900,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // App Icon + Title
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
-                            width: 2,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.agriculture,
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'AgriSense',
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                          Text(
-                            'v1.0.0',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white.withOpacity(0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
 
-                ],
-              ),
-            ),
+    return Scaffold(
+      body: Stack(
+        children: [
+          // Page content
+          _navItems[_selectedIndex].page,
 
-            // ============= MAIN NAVIGATION ITEMS =============
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                children: [
-                  // Navigation Section
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                    child: Text(
-                      'NAVIGATION',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey.shade600,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
+          // Floating menu button
+          FloatingMenuButton(
+            currentIndex: _selectedIndex,
+            items: _navItems
+                .map(
+                  (item) => MenuItemConfig(
+                    title: item.title,
+                    icon: item.icon,
+                    selectedIcon: item.selectedIcon,
                   ),
-                  ...List.generate(
-                    _navItems.length,
-                    (index) => _buildNavItem(
-                      context,
-                      index,
-                      _navItems[index],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  Divider(
-                    height: 1,
-                    color: Colors.grey.shade300,
-                    indent: 16,
-                    endIndent: 16,
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Quick Actions Section
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                    child: Text(
-                      'QUICK ACTIONS',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey.shade600,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
-                  _buildDrawerActionItem(
-                    context,
-                    icon: Icons.brightness_4_outlined,
-                    title: 'Dark Mode',
-                    subtitle: themeProvider.isDarkMode ? 'Enabled' : 'Disabled',
-                    onTap: () {
-                      themeProvider.toggleTheme(!themeProvider.isDarkMode);
-                    },
-                    trailing: Switch(
-                      value: themeProvider.isDarkMode,
-                      onChanged: (value) {
-                        themeProvider.toggleTheme(value);
-                      },
-                      activeColor: Colors.green.shade600,
-                    ),
-                  ),
-                  _buildDrawerActionItem(
-                    context,
-                    icon: Icons.info_outline_rounded,
-                    title: 'About AgriSense',
-                    subtitle: 'Version & Credits',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showAboutDialog(context);
-                    },
-                  ),
-                  _buildDrawerActionItem(
-                    context,
-                    icon: Icons.help_outline_rounded,
-                    title: 'Help & Support',
-                    subtitle: 'Documentation & FAQs',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showHelpDialog(context);
-                    },
-                  ),
-                  _buildDrawerActionItem(
-                    context,
-                    icon: Icons.feedback_outlined,
-                    title: 'Send Feedback',
-                    subtitle: 'Report issues & suggestions',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Thank you for your feedback! We appreciate it.'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                      Navigator.pop(context);
-                    },
-                  ),
-                ],
+                )
+                .toList(),
+            quickActions: [
+              QuickActionConfig(
+                label: 'Dark Mode',
+                icon: themeProvider.isDarkMode
+                    ? Icons.brightness_7_rounded
+                    : Icons.brightness_4_rounded,
+                color: Colors.amber,
+                onTap: () {
+                  themeProvider.toggleTheme(!themeProvider.isDarkMode);
+                },
               ),
-            ),
-
-            // ============= FOOTER SECTION =============
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.green.shade50,
-                    Colors.green.shade100,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Colors.green.shade200,
-                  width: 1.5,
-                ),
+              QuickActionConfig(
+                label: 'About',
+                icon: Icons.info_outline_rounded,
+                color: Colors.blue,
+                onTap: () => _showAboutDialog(context),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle_outline,
-                        size: 18,
-                        color: Colors.green.shade700,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'System Status',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.green.shade900,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'All systems operational',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.green.shade700,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Last sync: Just now',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.green.shade600,
-                    ),
-                  ),
-                ],
+              QuickActionConfig(
+                label: 'Help',
+                icon: Icons.help_outline_rounded,
+                color: Colors.green,
+                onTap: () => _showHelpDialog(context),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ============= HELPER: BUILD DRAWER ACTION ITEM =============
-  Widget _buildDrawerActionItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    Widget? trailing,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: Colors.blue.shade600,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade800,
-                        ),
-                      ),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (trailing != null) trailing else const SizedBox.shrink(),
-              ],
-            ),
+            ],
+            onItemSelected: (index) {
+              setState(() => _selectedIndex = index);
+            },
           ),
-        ),
+        ],
       ),
     );
   }
@@ -600,83 +320,6 @@ class _MainWrapperState extends State<MainWrapper> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildNavItem(
-    BuildContext context,
-    int index,
-    NavigationItem item,
-  ) {
-    final isSelected = _selectedIndex == index;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.green.shade600.withOpacity(0.15)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          border: isSelected
-              ? Border.all(
-                  color: Colors.green.shade400.withOpacity(0.3),
-                  width: 1.5,
-                )
-              : null,
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.green.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? Colors.green.shade600.withOpacity(0.25)
-                  : Colors.grey.shade200.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              isSelected ? item.selectedIcon : item.icon,
-              color: isSelected
-                  ? Colors.green.shade700
-                  : Colors.grey.shade600,
-              size: 24,
-            ),
-          ),
-          title: Text(
-            item.title,
-            style: TextStyle(
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              fontSize: 15,
-              color: isSelected
-                  ? Colors.green.shade900
-                  : Colors.grey.shade700,
-              letterSpacing: 0.2,
-            ),
-          ),
-          trailing: isSelected
-              ? Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: Colors.green.shade600,
-                )
-              : null,
-          onTap: () {
-            setState(() => _selectedIndex = index);
-            Navigator.pop(context); // Close drawer
-          },
-        ),
-      ),
     );
   }
 }
@@ -839,7 +482,7 @@ class _DashboardPageState extends State<DashboardPage> {
             child: AppBarBuilder.dashboard(
               context: context,
               onMenuPressed: () {
-                Scaffold.of(context).openDrawer();
+                // Menu button removed - floating menu is now the primary navigation
               },
             ),
           ),
@@ -849,7 +492,7 @@ class _DashboardPageState extends State<DashboardPage> {
             child: SafeArea(
               bottom: true,
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

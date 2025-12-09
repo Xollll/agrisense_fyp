@@ -20,15 +20,14 @@ class SettingsPage extends StatelessWidget {
             child: AppBarBuilder.settings(
               context: context,
               onMenuPressed: () {
-                Scaffold.of(context).openDrawer();
+                // Menu button removed - floating menu is now the primary navigation
               },
             ),
           ),
-          SliverToBoxAdapter(
+          SliverFillRemaining(
+            hasScrollBody: true,
             child: ListView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               children: [
                 // ========== LIVE DETECTION SECTION ==========
                 _buildSectionHeader(context, "Live Detection"),

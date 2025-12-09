@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/statistics_provider.dart';
 import '../widgets/enhanced_app_bar.dart';
 import '../services/statistics_service.dart';
+import '../services/export_service.dart';
 
 class StatisticsPageRedesigned extends StatefulWidget {
   const StatisticsPageRedesigned({Key? key}) : super(key: key);
@@ -137,7 +138,7 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1047,16 +1048,68 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
   }
 
   Future<void> _exportAsCSV() async {
-    // Implementation similar to original
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Exporting CSV...')),
-    );
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('📊 Exporting CSV...')),
+      );
+      
+      // Get current statistics
+      final stats = context.read<StatisticsProvider>();
+      
+      // Convert disease stats to detections format for export
+      final detections = stats.diseaseStats.map((ds) => {
+        'disease': ds.disease,
+        'count': ds.count.toString(),
+        'percentage': '${ds.percentage.toStringAsFixed(1)}%',
+        'last_detected': ds.lastDetected.toIso8601String(),
+      }).toList();
+      
+      // Export to CSV
+      final file = await ExportService.exportToCSV(
+        detections: detections,
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ CSV saved: ${file.path.split('/').last}')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Export failed: $e')),
+      );
+    }
   }
 
   Future<void> _exportAsPDF() async {
-    // Implementation similar to original
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Exporting PDF...')),
-    );
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('📄 Exporting PDF...')),
+      );
+      
+      // Get current statistics
+      final stats = context.read<StatisticsProvider>();
+      
+      // Convert disease stats to detections format for export
+      final detections = stats.diseaseStats.map((ds) => {
+        'disease': ds.disease,
+        'count': ds.count.toString(),
+        'percentage': '${ds.percentage.toStringAsFixed(1)}%',
+        'last_detected': ds.lastDetected.toIso8601String(),
+      }).toList();
+      
+      // Export to PDF
+      final file = await ExportService.exportToPDF(
+        detections: detections,
+        summary: stats.summary,
+        diseaseStats: stats.diseaseStats,
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ PDF saved: ${file.path.split('/').last}')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Export failed: $e')),
+      );
+    }
   }
 }

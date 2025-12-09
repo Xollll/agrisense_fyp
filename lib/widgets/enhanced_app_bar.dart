@@ -61,7 +61,6 @@ class AppBarBuilder {
 /// Features:
 /// - Beautiful gradient background with rounded bottom corners
 /// - Smooth fade-in animation on page load
-/// - Menu button for navigation drawer
 /// - Page title and subtitle
 /// - Icon representing the page
 /// - Theme-aware and responsive
@@ -143,25 +142,9 @@ class _ModernAnimatedAppBarState extends State<ModernAnimatedAppBar>
           bottom: false,
           child: Row(
             children: [
-              // Hamburger Menu Button - Clean Design
-              IconButton(
-                icon: const Icon(
-                  Icons.menu_rounded,
-                  color: Colors.white,
-                  size: 26,
-                ),
-                onPressed: widget.onMenuPressed,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                tooltip: 'Open menu',
-                splashRadius: 24,
-              ),
-
-              const SizedBox(width: 8),
-
               // Icon with beautiful styling
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
                 child: Icon(
                   widget.icon,
                   color: Colors.white.withOpacity(0.95),
