@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/statistics_provider.dart';
-import '../widgets/app_bar.dart';
+import '../widgets/enhanced_app_bar.dart';
 import '../services/statistics_service.dart';
 
 class StatisticsPageRedesigned extends StatefulWidget {
@@ -37,12 +37,10 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
           body: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // Modern App Bar
+              // Enhanced App Bar with Status Indicators
               SliverToBoxAdapter(
-                child: ModernAppBar(
-                  title: "Farm Analytics",
-                  subtitle: "Understand your crop health story",
-                  icon: Icons.trending_up,
+                child: AppBarBuilder.statistics(
+                  context: context,
                   onMenuPressed: () {
                     Scaffold.of(context).openDrawer();
                   },

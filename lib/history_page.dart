@@ -1,7 +1,7 @@
 // lib/pages/history_page.dart
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
-import '../widgets/app_bar.dart';
+import '../widgets/enhanced_app_bar.dart';
 
 /// Returns the DIAGNOSIS CONFIDENCE color (how sure the model is)
 Color _getDiagnosisConfidenceColor(double confidence) {
@@ -179,12 +179,10 @@ class _HistoryPageState extends State<HistoryPage> {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // Modern App Bar
+            // Enhanced App Bar with Status Indicators
             SliverToBoxAdapter(
-              child: ModernAppBar(
-                title: "Detection History",
-                subtitle: "Your detection records",
-                icon: Icons.history,
+              child: AppBarBuilder.history(
+                context: context,
                 onMenuPressed: () {
                   Scaffold.of(context).openDrawer();
                 },

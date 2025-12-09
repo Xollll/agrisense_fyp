@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/app_bar.dart';
+import '../widgets/enhanced_app_bar.dart';
 import '../widgets/modern_card.dart';
 import '../providers/app_settings_provider.dart';
 
@@ -17,10 +17,8 @@ class SettingsPage extends StatelessWidget {
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
-            child: ModernAppBar(
-              title: "Settings",
-              subtitle: "Customize your experience",
-              icon: Icons.settings,
+            child: AppBarBuilder.settings(
+              context: context,
               onMenuPressed: () {
                 Scaffold.of(context).openDrawer();
               },

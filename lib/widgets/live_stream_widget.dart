@@ -3,13 +3,15 @@ import '../detection_service.dart';
 import 'mjpeg_stream.dart';
 import 'modern_card.dart';
 import '../theme/app_theme.dart';
+import 'animated_live_indicator.dart';
 
 // =============================================================
 // LIVE STREAM WIDGET
 // Handles: MJPEG camera stream + detection results UI only
 // No AI API calls here - purely presentational
+// Includes: Animated live indicator for connection status
 // =============================================================
-class LiveStreamWidget extends StatelessWidget {
+class LiveStreamWidget extends StatefulWidget {
   final List<NormalizedDetection> detections;
   final String streamUrl;
 
@@ -18,6 +20,67 @@ class LiveStreamWidget extends StatelessWidget {
     required this.detections,
     required this.streamUrl,
   });
+
+  @override
+  State<LiveStreamWidget> createState() => _LiveStreamWidgetState();
+}
+
+class _LiveStreamWidgetState extends State<LiveStreamWidget> {
+  /// Current live status
+  /// Determined by the actual MJPEG stream connection state
+  LiveStatus _liveStatus = LiveStatus.disconnected;
+
+  /// Callback for MJPEG stream to update status
+  void _updateStreamStatus(bool isConnected, bool isConnecting) {
+    if (!mounted) return;
+
+    setState(() {
+      if (isConnected) {
+        // Stream is actively receiving video
+        _liveStatus = LiveStatus.connected;
+      } else if (isConnecting) {
+        // Stream is attempting to connect
+        _liveStatus = LiveStatus.connecting;
+      } else {
+        // Stream is disconnected or failed
+        _liveStatus = LiveStatus.disconnected;
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize status as disconnected (will be updated by MJPEGStream)
+    _liveStatus = LiveStatus.disconnected;
+  }
+
+  @override
+  void didUpdateWidget(LiveStreamWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset to disconnected when stream URL changes
+    if (oldWidget.streamUrl != widget.streamUrl) {
+      setState(() {
+        _liveStatus = LiveStatus.disconnected;
+      });
+    }
+  }
+
+  void _onLiveIndicatorTapped() {
+    // Optional: Show more details about connection status
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _liveStatus == LiveStatus.connected
+              ? '✅ Camera is streaming live'
+              : _liveStatus == LiveStatus.connecting
+                  ? '⏳ Attempting to connect to camera'
+                  : '❌ Camera is not connected. Check camera settings.',
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,62 +105,19 @@ class LiveStreamWidget extends StatelessWidget {
                 child: SizedBox(
                   height: 280,
                   width: double.infinity,
-                  child: MJPEGStream(url: streamUrl),
+                  child: MJPEGStream(
+                    url: widget.streamUrl,
+                    onStatusChanged: _updateStreamStatus,
+                  ),
                 ),
               ),
+              // Animated Live Indicator (replaces static LIVE badge)
               Positioned(
                 top: 16,
                 right: 16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.green.shade500,
-                        Colors.green.shade700,
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.green.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(4),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withOpacity(0.5),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        "LIVE",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
+                child: AnimatedLiveIndicator(
+                  status: _liveStatus,
+                  onTap: _onLiveIndicatorTapped,
                 ),
               ),
             ],
@@ -129,7 +149,7 @@ class LiveStreamWidget extends StatelessWidget {
         const SizedBox(height: 14),
 
         // DETECTIONS LIST
-        detections.isEmpty
+        widget.detections.isEmpty
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 30),
@@ -155,7 +175,7 @@ class LiveStreamWidget extends StatelessWidget {
                 ),
               )
             : Column(
-                children: detections
+                children: widget.detections
                     .where((d) => d.label.toLowerCase() != "healthy")
                     .map(
                       (d) => Padding(

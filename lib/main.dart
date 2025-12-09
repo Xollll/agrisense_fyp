@@ -7,7 +7,7 @@ import 'theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'history_page.dart';
 import 'theme/theme_service.dart';
-import 'widgets/app_bar.dart';
+import 'widgets/enhanced_app_bar.dart';
 import 'detection_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/detection_manager.dart';
@@ -18,6 +18,7 @@ import 'providers/statistics_provider.dart';
 import 'widgets/live_stream_widget.dart';
 import 'widgets/ai_recommendation_widget.dart';
 import 'pages/statistics_page_redesigned.dart';
+import 'package:http/http.dart' as http;
 
 
 
@@ -712,6 +713,9 @@ class _DashboardPageState extends State<DashboardPage> {
   NormalizedDetection? _lastDetectionPersistent;
   bool _isCurrentlyDetected = false;
   Timer? _detectionTimer;
+  Timer? _serverCheckTimer;
+  bool _isServerOnline = false;
+  String _streamUrl = "${dotenv.env['DETECTION_SERVER_URL'] ?? 'http://192.168.8.6:5000'}/video_feed";
 
   late GlobalKey _aiRecommendationWidgetKey;
 
@@ -719,10 +723,75 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _aiRecommendationWidgetKey = GlobalKey();
+    
+    // Detection polling (unchanged)
     _detectionTimer = Timer.periodic(
       const Duration(milliseconds: 700),
       (_) => _fetchDetections(),
     );
+    
+    // Server health check - detect when server starts/stops
+    _serverCheckTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => _checkServerHealth(),
+    );
+    
+    // Initial server check
+    _checkServerHealth();
+  }
+
+  /// Check if Flask server is online
+  Future<void> _checkServerHealth() async {
+    final baseUrl = dotenv.env['DETECTION_SERVER_URL'] ?? 'http://192.168.8.6:5000';
+    try {
+      final response = await http.head(
+        Uri.parse('$baseUrl/health'),
+      ).timeout(const Duration(seconds: 2));
+      
+      final isOnline = response.statusCode == 200;
+      
+      // If server status changed, trigger stream restart
+      if (isOnline != _isServerOnline && mounted) {
+        setState(() {
+          _isServerOnline = isOnline;
+        });
+        
+        // Force stream URL change to trigger didUpdateWidget
+        if (isOnline) {
+          print('✅ Server is online - triggering stream restart');
+          _restartStream();
+        } else {
+          print('❌ Server is offline - stream will show last frame');
+        }
+      }
+    } catch (e) {
+      // Server unreachable
+      if (_isServerOnline && mounted) {
+        print('❌ Server health check failed: $e');
+        setState(() {
+          _isServerOnline = false;
+        });
+      }
+    }
+  }
+
+  /// Force stream to restart by toggling URL
+  void _restartStream() {
+    if (mounted) {
+      setState(() {
+        // Temporarily change URL to empty to reset stream
+        _streamUrl = '';
+      });
+      
+      // After a short delay, restore the actual URL
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() {
+            _streamUrl = "${dotenv.env['DETECTION_SERVER_URL'] ?? 'http://192.168.8.6:5000'}/video_feed";
+          });
+        }
+      });
+    }
   }
 
   Future<void> _fetchDetections() async {
@@ -755,6 +824,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     _detectionTimer?.cancel();
+    _serverCheckTimer?.cancel();
     super.dispose();
   }
 
@@ -764,12 +834,10 @@ class _DashboardPageState extends State<DashboardPage> {
       backgroundColor: Theme.of(context).colorScheme.background,
       body: CustomScrollView(
         slivers: [
-          // Modern App Bar
+          // Enhanced App Bar with Status Indicators
           SliverToBoxAdapter(
-            child: ModernAppBar(
-              title: "AgriSense Monitor",
-              subtitle: "Real-time Chili Crop Health",
-              icon: Icons.agriculture,
+            child: AppBarBuilder.dashboard(
+              context: context,
               onMenuPressed: () {
                 Scaffold.of(context).openDrawer();
               },
@@ -788,7 +856,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     // Live Stream + Detections
                     LiveStreamWidget(
                       detections: _currentDetections,
-                      streamUrl: "${dotenv.env['DETECTION_SERVER_URL'] ?? 'http://192.168.8.6:5000'}/video_feed",
+                      streamUrl: _streamUrl,
                     ),
                     const SizedBox(height: 28),
 
