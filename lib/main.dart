@@ -20,6 +20,7 @@ import 'widgets/live_stream_widget.dart';
 import 'widgets/ai_recommendation_widget.dart';
 import 'pages/statistics_page_redesigned.dart';
 import 'package:http/http.dart' as http;
+import 'screens/splash_screen.dart';
 
 
 
@@ -96,8 +97,49 @@ class AgriSenseApp extends StatelessWidget {
       theme: AppTheme.lightTheme(),
       darkTheme: AppTheme.darkTheme(),
       themeMode: themeProvider.themeMode,
-      home: const MainWrapper(),
+      home: const SplashScreenWrapper(),
     );
+  }
+}
+
+/// Wrapper to show splash screen and then navigate to main app
+class SplashScreenWrapper extends StatefulWidget {
+  const SplashScreenWrapper({super.key});
+
+  @override
+  State<SplashScreenWrapper> createState() => _SplashScreenWrapperState();
+}
+
+class _SplashScreenWrapperState extends State<SplashScreenWrapper>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _navigateToHome();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void _navigateToHome() async {
+    // Show splash screen for 3 seconds
+    await Future.delayed(const Duration(seconds: 3));
+    
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const MainWrapper()),
+        (route) => false,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const AgricultureSplashScreen();
   }
 }
 
