@@ -438,7 +438,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                     )
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 140),
                       child: Column(
                         children: [
                         // Today Section

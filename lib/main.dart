@@ -492,7 +492,7 @@ class _DashboardPageState extends State<DashboardPage> {
             child: SafeArea(
               bottom: true,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

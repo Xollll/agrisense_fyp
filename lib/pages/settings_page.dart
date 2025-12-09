@@ -27,7 +27,7 @@ class SettingsPage extends StatelessWidget {
           SliverFillRemaining(
             hasScrollBody: true,
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
               children: [
                 // ========== LIVE DETECTION SECTION ==========
                 _buildSectionHeader(context, "Live Detection"),

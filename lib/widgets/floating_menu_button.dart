@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'dart:math' as math;
+import '../theme/app_theme.dart';
 
-/// 🚀 Ultra-Modern Floating Action Menu Button
-/// Premium design with glassmorphism, gradient, neon effects
+/// 🎯 Minimalist Floating Action Menu Button
+/// Clean, elegant design with smooth animations
 /// Features:
-/// - Animated menu with smooth transitions
-/// - Gradient background with glassmorphism
-/// - Glowing neon effects
-/// - Ripple & bounce animations
-/// - Modern card design for menu items
+/// - Smooth slide-up animation for menu
+/// - Minimalist circular button design
+/// - Glassmorphic menu panel
+/// - Elegant icon transitions
 /// - Theme-aware with dark mode support
-/// - Custom animated AI/tech icon with particle effects
 class FloatingMenuButton extends StatefulWidget {
   final int currentIndex;
   final List<MenuItemConfig> items;
@@ -103,115 +101,183 @@ class _FloatingMenuButtonState extends State<FloatingMenuButton>
             ),
           ),
 
-        // Menu Panel
+        // Menu Panel - Vertical icons above FAB with page names
         Positioned(
           bottom: 30,
           right: 30,
-          child: SlideTransition(
-            position: Tween<Offset>(begin: const Offset(0.3, 0.3), end: Offset.zero)
-                .animate(CurvedAnimation(parent: _menuController, curve: Curves.easeOut)),
-            child: FadeTransition(
-              opacity: _menuController,
-              child: GestureDetector(
-                onTap: () {},
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    // Quick Actions
-                    if (widget.quickActions.isNotEmpty) ...[
-                      _buildGlassmorphicContainer(
-                        isDark: isDark,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.flash_on_rounded,
-                                    size: 16,
-                                    color: Colors.amber.shade400,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Quick Actions',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.5,
-                                      color: isDark
-                                          ? Colors.grey.shade300
-                                          : Colors.grey.shade700,
+          child: GestureDetector(
+            onTap: () {}, // Prevent dismissing menu when tapping on menu items
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Page Navigation Icons (Vertical Stack)
+                SlideTransition(
+                  position: Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+                      .animate(CurvedAnimation(parent: _menuController, curve: Curves.easeOut)),
+                  child: FadeTransition(
+                    opacity: _menuController,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: widget.items
+                          .asMap()
+                          .entries
+                          .map((e) {
+                        final isSelected = widget.currentIndex == e.key;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: GestureDetector(
+                            onTap: () {
+                              widget.onItemSelected(e.key);
+                              _closeMenu();
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Page Name
+                                _buildGlassmorphicContainer(
+                                  isDark: isDark,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    child: Text(
+                                      e.value.title,
+                                      style: TextStyle(
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w600,
+                                        fontSize: 13,
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : (isDark
+                                                ? Colors.grey.shade300
+                                                : Colors.grey.shade800),
+                                      ),
                                     ),
                                   ),
-                                ],
+                                ),
+                                const SizedBox(width: 8),
+                                // Page Icon
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : Colors.grey.shade300,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: (isSelected
+                                                ? AppColors.primary
+                                                : Colors.grey.shade300)
+                                            .withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    isSelected
+                                        ? e.value.selectedIcon
+                                        : e.value.icon,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+
+                // Quick Actions Section
+                if (widget.quickActions.isNotEmpty)
+                  SlideTransition(
+                    position: Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+                        .animate(CurvedAnimation(
+                          parent: _menuController,
+                          curve: Curves.easeOut,
+                        )),
+                    child: FadeTransition(
+                      opacity: _menuController,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildGlassmorphicContainer(
+                          isDark: isDark,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.flash_on_rounded,
+                                      size: 16,
+                                      color: Colors.amber.shade400,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Quick Actions',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.5,
+                                        color: isDark
+                                            ? Colors.grey.shade300
+                                            : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: widget.quickActions
-                                  .asMap()
-                                  .entries
-                                  .map((e) => _buildQuickActionButton(
-                                    context,
-                                    e.value,
-                                    isDark,
-                                  ))
-                                  .toList(),
-                            ),
-                          ],
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: widget.quickActions
+                                    .asMap()
+                                    .entries
+                                    .map((e) => _buildQuickActionButton(
+                                      context,
+                                      e.value,
+                                      isDark,
+                                    ))
+                                    .toList(),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                    ],
-
-                    // Navigation Items
-                    _buildGlassmorphicContainer(
-                      isDark: isDark,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: widget.items
-                            .asMap()
-                            .entries
-                            .map((e) => _buildMenuItemCard(
-                              context,
-                              e.value,
-                              e.key,
-                              isDark,
-                            ))
-                            .toList(),
-                      ),
                     ),
-                  ],
-                ),
-              ),
+                  ),
+              ],
             ),
           ),
         ),
 
-        // Main FAB Button
+        // Main FAB Button - Minimalist design
         Positioned(
           bottom: 30,
           right: 30,
           child: ScaleTransition(
-            scale: Tween<double>(begin: 1, end: 0.85).animate(
+            scale: Tween<double>(begin: 1, end: 0.9).animate(
               CurvedAnimation(parent: _menuController, curve: Curves.easeOut),
             ),
-            child: RotationTransition(
-              turns: Tween<double>(begin: 0, end: 0.375).animate(
-                CurvedAnimation(parent: _menuController, curve: Curves.easeInOut),
-              ),
-              child: AnimatedBuilder(
+            child: AnimatedBuilder(
                 animation: Listenable.merge([_pulseController, _bounceController]),
                 builder: (context, child) {
                   final bounceOffset = _isMenuOpen 
                     ? 0.0
-                    : ((_bounceController.value - 0.5).abs() * 8);
+                    : ((_bounceController.value - 0.5).abs() * 6);
                   
                   return Transform.translate(
                     offset: Offset(0, -bounceOffset),
@@ -219,29 +285,17 @@ class _FloatingMenuButtonState extends State<FloatingMenuButton>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         boxShadow: [
-                          // Primary cyan glow
+                          // Primary shadow
                           BoxShadow(
-                            color: Colors.cyan.withOpacity(0.6),
-                            blurRadius: 35,
-                            spreadRadius: 5,
-                          ),
-                          // Secondary purple glow
-                          BoxShadow(
-                            color: Colors.purple.shade400.withOpacity(0.4),
-                            blurRadius: 25,
-                            spreadRadius: 8,
-                          ),
-                          // Tertiary blue glow
-                          BoxShadow(
-                            color: Colors.blue.shade400.withOpacity(0.3),
-                            blurRadius: 15,
-                            spreadRadius: 2,
-                          ),
-                          // Deep shadow
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.25),
-                            blurRadius: 12,
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 16,
                             offset: const Offset(0, 6),
+                          ),
+                          // Secondary shadow for depth
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
@@ -251,32 +305,43 @@ class _FloatingMenuButtonState extends State<FloatingMenuButton>
                         child: Ink(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Colors.cyan.shade300,
-                                Colors.blue.shade500,
-                                Colors.indigo.shade600,
-                                Colors.purple.shade600,
-                              ],
-                            ),
+                            color: AppColors.primary,
                           ),
                           child: InkWell(
                             onTap: _toggleMenu,
                             customBorder: const CircleBorder(),
-                            splashColor: Colors.white.withOpacity(0.3),
+                            splashColor: Colors.white.withOpacity(0.2),
                             child: Container(
                               width: 70,
                               height: 70,
                               alignment: Alignment.center,
-                              child: CustomPaint(
-                                painter: AnimatedAIIconPainter(
-                                  progress: _menuController.value,
-                                  pulseProgress: _pulseController.value,
-                                  isOpen: _isMenuOpen,
-                                ),
-                                size: const Size(70, 70),
+                              // Icon with subtle shadow effect
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // Icon shadow layer (behind)
+                                  Opacity(
+                                    opacity: 0.15,
+                                    child: Transform.translate(
+                                      offset: const Offset(0, 1),
+                                      child: Icon(
+                                        _isMenuOpen 
+                                          ? Icons.close_rounded 
+                                          : Icons.eco_rounded,
+                                        color: Colors.black,
+                                        size: 32,
+                                      ),
+                                    ),
+                                  ),
+                                  // Icon foreground
+                                  Icon(
+                                    _isMenuOpen 
+                                      ? Icons.close_rounded 
+                                      : Icons.eco_rounded,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -286,7 +351,6 @@ class _FloatingMenuButtonState extends State<FloatingMenuButton>
                   );
                 },
               ),
-            ),
           ),
         ),
       ],
@@ -324,86 +388,6 @@ class _FloatingMenuButtonState extends State<FloatingMenuButton>
             ],
           ),
           child: child,
-        ),
-      ),
-    );
-  }
-
-  /// Menu Item Card
-  Widget _buildMenuItemCard(
-    BuildContext context,
-    MenuItemConfig item,
-    int index,
-    bool isDark,
-  ) {
-    final isSelected = widget.currentIndex == index;
-    final accentColor = Colors.blue.shade500;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: InkWell(
-        onTap: () {
-          widget.onItemSelected(index);
-          _closeMenu();
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? accentColor.withOpacity(0.2)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected
-                  ? accentColor.withOpacity(0.4)
-                  : Colors.transparent,
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? accentColor.withOpacity(0.2)
-                      : Colors.grey.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  isSelected ? item.selectedIcon : item.icon,
-                  color: isSelected ? accentColor : Colors.grey.shade600,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                      fontSize: 14,
-                      color: isSelected
-                          ? accentColor
-                          : (isDark ? Colors.grey.shade300 : Colors.grey.shade800),
-                    ),
-                  ),
-                  if (item.subtitle != null)
-                    Text(
-                      item.subtitle!,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -448,198 +432,6 @@ class _FloatingMenuButtonState extends State<FloatingMenuButton>
         ),
       ),
     );
-  }
-}
-
-/// 🎨 Animated AI Icon Painter
-/// Creates a dynamic circuit/neural network icon with morphing and particle effects
-class AnimatedAIIconPainter extends CustomPainter {
-  final double progress;
-  final double pulseProgress;
-  final bool isOpen;
-
-  AnimatedAIIconPainter({
-    required this.progress,
-    required this.pulseProgress,
-    required this.isOpen,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final centerX = size.width / 2;
-    final centerY = size.height / 2;
-    final baseRadius = 12.0;
-    final glow = 4 + (pulseProgress * 2);
-
-    // Draw multiple glowing layers for depth
-    _drawGlowLayer(canvas, centerX, centerY, baseRadius + glow, 0.15);
-    _drawGlowLayer(canvas, centerX, centerY, baseRadius + glow / 1.5, 0.2);
-
-    // Core neural network nodes
-    _drawNeuralNetwork(canvas, centerX, centerY, baseRadius, progress, pulseProgress);
-
-    // Animated connecting lines
-    _drawConnectingLines(canvas, centerX, centerY, baseRadius, progress, pulseProgress);
-
-    // Particle burst effect (enhanced when opening)
-    _drawParticles(canvas, centerX, centerY, progress, pulseProgress);
-  }
-
-  void _drawGlowLayer(Canvas canvas, double cx, double cy, double radius, double opacity) {
-    final glowPaint = Paint()
-      ..color = Colors.cyan.withOpacity(opacity)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 4);
-
-    canvas.drawCircle(Offset(cx, cy), radius, glowPaint);
-  }
-
-  void _drawNeuralNetwork(
-    Canvas canvas,
-    double cx,
-    double cy,
-    double radius,
-    double progress,
-    double pulseProgress,
-  ) {
-    final nodes = 5; // Number of nodes in the network
-    final nodeRadius = 2.5 + (pulseProgress * 0.8);
-
-    for (int i = 0; i < nodes; i++) {
-      final angle = (i / nodes) * 2 * 3.14159265359 + progress * 2 * 3.14159265359;
-      final x = cx + math.cos(angle) * radius;
-      final y = cy + math.sin(angle) * radius;
-
-      // Pulsing node
-      final nodePaint = Paint()
-        ..color = Color.lerp(Colors.cyan, Colors.purple, (i / nodes))!
-        ..style = PaintingStyle.fill;
-
-      canvas.drawCircle(Offset(x, y), nodeRadius, nodePaint);
-
-      // Glow around node
-      final glowPaint = Paint()
-        ..color = Color.lerp(Colors.cyan, Colors.purple, (i / nodes))!
-            .withOpacity(0.4 - (pulseProgress * 0.2))
-        ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 2);
-
-      canvas.drawCircle(Offset(x, y), nodeRadius + 2, glowPaint);
-    }
-
-    // Central node
-    final centerNodePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    
-    final centerNodeGlow = 3.5 + (pulseProgress * 1.5);
-    canvas.drawCircle(Offset(cx, cy), 2.5, centerNodePaint);
-
-    final centerGlowPaint = Paint()
-      ..color = Colors.white.withOpacity(0.6 - (pulseProgress * 0.3))
-      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 3);
-    
-    canvas.drawCircle(Offset(cx, cy), centerNodeGlow, centerGlowPaint);
-  }
-
-  void _drawConnectingLines(
-    Canvas canvas,
-    double cx,
-    double cy,
-    double radius,
-    double progress,
-    double pulseProgress,
-  ) {
-    final nodes = 5;
-    final linePaint = Paint()
-      ..strokeWidth = 1.2 + (pulseProgress * 0.4)
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    for (int i = 0; i < nodes; i++) {
-      final angle1 = (i / nodes) * 2 * 3.14159265359 + progress * 2 * 3.14159265359;
-      final angle2 = ((i + 1) / nodes) * 2 * 3.14159265359 + progress * 2 * 3.14159265359;
-
-      final x1 = cx + math.cos(angle1) * radius;
-      final y1 = cy + math.sin(angle1) * radius;
-      final x2 = cx + math.cos(angle2) * radius;
-      final y2 = cy + math.sin(angle2) * radius;
-
-      // Gradient color for the line
-      final colorProgress = i / nodes;
-      final lineColor = Color.lerp(Colors.cyan, Colors.purple, colorProgress)!
-          .withOpacity(0.6 + (pulseProgress * 0.2));
-
-      linePaint.color = lineColor;
-      canvas.drawLine(Offset(x1, y1), Offset(x2, y2), linePaint);
-
-      // Animated dot along the line
-      final dotProgress = (progress * 2 + (i / nodes)) % 1.0;
-      final dotX = x1 + (x2 - x1) * dotProgress;
-      final dotY = y1 + (y2 - y1) * dotProgress;
-
-      final dotPaint = Paint()
-        ..color = Colors.white.withOpacity(0.8)
-        ..style = PaintingStyle.fill;
-
-      canvas.drawCircle(Offset(dotX, dotY), 1.2, dotPaint);
-    }
-
-    // Connect all nodes to center
-    for (int i = 0; i < nodes; i++) {
-      final angle = (i / nodes) * 2 * 3.14159265359 + progress * 2 * 3.14159265359;
-      final x = cx + math.cos(angle) * radius;
-      final y = cy + math.sin(angle) * radius;
-
-      final colorProgress = i / nodes;
-      final lineColor = Color.lerp(Colors.cyan, Colors.purple, colorProgress)!
-          .withOpacity(0.4 + (pulseProgress * 0.15));
-
-      linePaint.color = lineColor;
-      linePaint.strokeWidth = 0.8 + (pulseProgress * 0.2);
-      canvas.drawLine(Offset(cx, cy), Offset(x, y), linePaint);
-    }
-  }
-
-  void _drawParticles(
-    Canvas canvas,
-    double cx,
-    double cy,
-    double progress,
-    double pulseProgress,
-  ) {
-    final particleCount = 8;
-    final particleExpansion = progress * 15;
-
-    for (int i = 0; i < particleCount; i++) {
-      final angle = (i / particleCount) * 2 * 3.14159265359;
-      final distance = 8 + particleExpansion;
-      final x = cx + math.cos(angle) * distance;
-      final y = cy + math.sin(angle) * distance;
-
-      // Fade out as it expands
-      final opacity = (1 - progress) * (0.6 + pulseProgress * 0.2);
-
-      final particlePaint = Paint()
-        ..color = Colors.cyan.withOpacity(opacity)
-        ..style = PaintingStyle.fill;
-
-      canvas.drawCircle(Offset(x, y), 1.2 - (progress * 0.8), particlePaint);
-    }
-
-    // Inner rotating ring
-    final ringPaint = Paint()
-      ..color = Colors.white.withOpacity(0.5 + (pulseProgress * 0.2))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    final ringRadius = 8 + (pulseProgress * 1);
-    canvas.drawCircle(Offset(cx, cy), ringRadius, ringPaint);
-  }
-
-  @override
-  bool shouldRepaint(AnimatedAIIconPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.pulseProgress != pulseProgress ||
-        oldDelegate.isOpen != isOpen;
   }
 }
 
