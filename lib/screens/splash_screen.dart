@@ -127,11 +127,12 @@ class _AgricultureSplashScreenState extends State<AgricultureSplashScreen>
                                 ),
                               ],
                             ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.agriculture,
-                                size: 70,
-                                color: Colors.white,
+                            child: Center(
+                              child: Image.asset(
+                                'assets/app logo.png',
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.contain,
                               ),
                             ),
                           ),
