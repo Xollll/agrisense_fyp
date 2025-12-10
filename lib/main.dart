@@ -16,11 +16,13 @@ import 'services/local_cache_service.dart';
 import 'services/sync_service.dart';
 import 'providers/app_settings_provider.dart';
 import 'providers/statistics_provider.dart';
+import 'providers/notification_provider.dart';
 import 'widgets/live_stream_widget.dart';
 import 'widgets/ai_recommendation_widget.dart';
 import 'pages/statistics_page_redesigned.dart';
 import 'package:http/http.dart' as http;
 import 'screens/splash_screen.dart';
+import 'screens/notification_list_page.dart';
 import 'services/notification_service.dart';
 
 
@@ -62,8 +64,13 @@ void main() async {
   await appSettings.initialize();
   print('✅ App settings initialized');
 
+  // Initialize notification provider
+  final notificationProvider = NotificationProvider();
+  print('✅ Notification provider initialized');
+
   // Start background auto-processing
   final detectionManager = DetectionManager();
+  detectionManager.setNotificationProvider(notificationProvider);
   detectionManager.startPolling(
     const Duration(seconds: 10),
     appSettings, // Pass settings to manager
@@ -82,6 +89,9 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => StatisticsProvider(),
+        ),
+        ChangeNotifierProvider.value(
+          value: notificationProvider,
         ),
       ],
       child: const AgriSenseApp(),
@@ -103,6 +113,9 @@ class AgriSenseApp extends StatelessWidget {
       theme: AppTheme.lightTheme(),
       darkTheme: AppTheme.darkTheme(),
       themeMode: themeProvider.themeMode,
+      routes: {
+        '/notifications': (context) => const NotificationListPage(),
+      },
       home: const SplashScreenWrapper(),
     );
   }
@@ -527,10 +540,15 @@ class _DashboardPageState extends State<DashboardPage> {
         slivers: [
           // Enhanced App Bar with Status Indicators
           SliverToBoxAdapter(
-            child: AppBarBuilder.dashboard(
-              context: context,
-              onMenuPressed: () {
-                // Menu button removed - floating menu is now the primary navigation
+            child: Consumer<NotificationProvider>(
+              builder: (context, notificationProvider, child) {
+                return AppBarBuilder.dashboard(
+                  context: context,
+                  onMenuPressed: () {
+                    // Menu button removed - floating menu is now the primary navigation
+                  },
+                  notificationCount: notificationProvider.unreadCount,
+                );
               },
             ),
           ),

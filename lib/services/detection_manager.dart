@@ -7,14 +7,21 @@ import 'local_cache_service.dart';
 import 'sync_service.dart';
 import 'notification_service.dart';
 import '../providers/app_settings_provider.dart';
+import '../providers/notification_provider.dart';
 
 class DetectionManager {
   Timer? _timer;
   final SupabaseService _supabase = SupabaseService();
   final SyncService _sync = SyncService();
+  NotificationProvider? _notificationProvider;
 
   bool _isProcessing = false;
   AppSettingsProvider? _settings;
+
+  // Set notification provider for in-app notifications
+  void setNotificationProvider(NotificationProvider provider) {
+    _notificationProvider = provider;
+  }
 
   // Start polling every 10s (or any interval you choose)
   void startPolling(Duration interval, [AppSettingsProvider? settings]) {
@@ -70,6 +77,15 @@ class DetectionManager {
         confidence: detection.confidence,
         solution: solution,
       );
+
+      // Add to notification provider for in-app display
+      if (_notificationProvider != null) {
+        await _notificationProvider!.addNotification(
+          disease: detection.label,
+          confidence: detection.confidence,
+          solution: solution,
+        );
+      }
 
       if (solution.isNotEmpty) {
         await notificationService.showRecommendationNotification(

@@ -485,6 +485,8 @@ class _ModernAnimatedAppBarState extends State<ModernAnimatedAppBar>
     return GestureDetector(
       onTap: () {
         _notificationShakeController.forward(from: 0);
+        // Navigate to notification list page
+        Navigator.of(context).pushNamed('/notifications');
       },
       child: AnimatedBuilder(
         animation: _notificationShakeController,
