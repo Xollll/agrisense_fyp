@@ -1583,8 +1583,10 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     try {
       final directory = file.parent;
       final directoryPath = directory.path;
+      final fileName = file.path.split('/').last;
+      final isCSV = fileName.toLowerCase().endsWith('.csv');
       
-      print('📂 Opening directory: $directoryPath');
+      print('📂 Opening: $fileName');
       
       // Platform-specific code to open the folder
       if (Platform.isWindows) {
@@ -1666,56 +1668,195 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           );
         }
       } else {
-        // For mobile platforms (Android, iOS), try to open the file with default app
-        await OpenFile.open(file.path);
+        // For mobile platforms (Android, iOS)
+        final result = await OpenFile.open(file.path);
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.file_open, color: Colors.white),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Opening file...',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+          // Check if file was opened successfully or if no app was found
+          if (result.type == ResultType.done) {
+            // File opened successfully
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.file_open, color: Colors.white),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Opening file...',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                backgroundColor: leafGreen,
+                duration: const Duration(seconds: 2),
               ),
-              backgroundColor: leafGreen,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+            );
+          } else {
+            // No app found to open the file
+            _showFileLocationBottomSheet(file, isCSV);
+          }
         }
       }
     } catch (e) {
       print('❌ Error opening file/folder: $e');
-      
-      // Fallback: show file location in snackbar
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.info, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'File saved at:\n${file.path}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+      _showFileLocationBottomSheet(file, file.path.split('/').last.toLowerCase().endsWith('.csv'));
+    }
+  }
+
+  /// Show bottom sheet with file location and instructions
+  void _showFileLocationBottomSheet(File file, bool isCSV) {
+    if (!mounted) return;
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Icon(
+              isCSV ? Icons.table_chart : Icons.picture_as_pdf,
+              size: 48,
+              color: isCSV ? Colors.green : Colors.red,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isCSV ? 'CSV File Ready' : 'PDF File Ready',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: soilDark,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (isCSV) ...[
+              Text(
+                'No CSV app found on your device',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Install a spreadsheet app:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade900,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '• Google Sheets (free)\n• Microsoft Excel\n• WPS Office\n• LibreOffice Calc',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.blue.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              Text(
+                'Your PDF file is ready to view',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.folder, size: 20, color: soilDark),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'File Location:',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: soilDark,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          file.path,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey.shade700,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: leafGreen,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text(
+                  'Got it!',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ],
+              ),
             ),
-            backgroundColor: soilDark.withOpacity(0.8),
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    }
+          ],
+        ),
+      ),
+    );
   }
 }
