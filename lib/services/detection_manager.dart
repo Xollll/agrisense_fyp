@@ -5,6 +5,7 @@ import '../gemini_service.dart';
 import 'supabase_service.dart';
 import 'local_cache_service.dart';
 import 'sync_service.dart';
+import 'notification_service.dart';
 import '../providers/app_settings_provider.dart';
 
 class DetectionManager {
@@ -61,6 +62,21 @@ class DetectionManager {
 
       // 3️⃣ Generate AI recommendation
       final solution = await GeminiService.generateGeminiRecommendation(detection);
+
+      // 🔔 Show notifications
+      final notificationService = NotificationService();
+      await notificationService.showDiseaseDetectionNotification(
+        diseaseName: detection.label,
+        confidence: detection.confidence,
+        solution: solution,
+      );
+
+      if (solution.isNotEmpty) {
+        await notificationService.showRecommendationNotification(
+          diseaseName: detection.label,
+          recommendation: solution,
+        );
+      }
 
       // 4️⃣ Cache locally
       await LocalCacheService.cacheDetection(

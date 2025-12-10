@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
 import 'dart:io';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import '../providers/statistics_provider.dart';
 import '../widgets/enhanced_app_bar.dart';
 import '../services/export_service.dart';
@@ -1667,37 +1667,34 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
             ),
           );
         }
+      } else if (Platform.isMacOS) {
+        // On macOS, show the file location instead (open_filex plugin not available)
+        _showFileLocationBottomSheet(file, isCSV);
       } else {
         // For mobile platforms (Android, iOS)
-        final result = await OpenFile.open(file.path);
+        await OpenFilex.open(file.path);
         
         if (mounted) {
-          // Check if file was opened successfully or if no app was found
-          if (result.type == ResultType.done) {
-            // File opened successfully
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.file_open, color: Colors.white),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Opening file...',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+          // File opened or app selection was shown
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.file_open, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Opening file...',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ],
-                ),
-                backgroundColor: leafGreen,
-                duration: const Duration(seconds: 2),
+                  ),
+                ],
               ),
-            );
-          } else {
-            // No app found to open the file
-            _showFileLocationBottomSheet(file, isCSV);
-          }
+              backgroundColor: leafGreen,
+              duration: const Duration(seconds: 2),
+            ),
+          );
         }
       }
     } catch (e) {

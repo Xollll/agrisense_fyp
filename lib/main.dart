@@ -21,6 +21,7 @@ import 'widgets/ai_recommendation_widget.dart';
 import 'pages/statistics_page_redesigned.dart';
 import 'package:http/http.dart' as http;
 import 'screens/splash_screen.dart';
+import 'services/notification_service.dart';
 
 
 
@@ -41,6 +42,11 @@ void main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? 'sb_publishable_kKNvrSZqF98IAPkKGW_fdg_GqttByHO',
   );
   print('✅ Supabase initialized');
+
+  // Initialize Notification Service
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+  print('✅ Notification service initialized');
 
   // ✅ PHASE 1: Initialize local cache service
   await LocalCacheService.initialize();
