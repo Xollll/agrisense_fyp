@@ -158,7 +158,7 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper>
 
   @override
   Widget build(BuildContext context) {
-    return const AgricultureSplashScreen();
+    return const ModernAgricultureSplashScreen();
   }
 }
 
