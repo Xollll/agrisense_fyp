@@ -1,32 +1,58 @@
-// lib/pages/statistics_page_redesigned.dart
+// lib/pages/statistics_page_modern.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:ui';
+import 'dart:io';
+import 'package:open_file/open_file.dart';
 import '../providers/statistics_provider.dart';
 import '../widgets/enhanced_app_bar.dart';
-import '../services/statistics_service.dart';
 import '../services/export_service.dart';
 
-class StatisticsPageRedesigned extends StatefulWidget {
-  const StatisticsPageRedesigned({Key? key}) : super(key: key);
+class StatisticsPageModern extends StatefulWidget {
+  const StatisticsPageModern({Key? key}) : super(key: key);
 
   @override
-  State<StatisticsPageRedesigned> createState() =>
-      _StatisticsPageRedesignedState();
+  State<StatisticsPageModern> createState() => _StatisticsPageModernState();
 }
 
-class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
-  int _selectedTimeRange = 0; // 0: All, 1: 30 Days, 2: 7 Days
+class _StatisticsPageModernState extends State<StatisticsPageModern>
+    with TickerProviderStateMixin {
+  int _selectedTimeRange = 0;
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+
+  // Agriculture-themed color palette
+  static const Color earthBrown = Color(0xFF8B7355);
+  static const Color cropGreen = Color(0xFF6B8E23);
+  static const Color sunYellow = Color(0xFFFFB347);
+  static const Color skyBlue = Color(0xFF87CEEB);
+  static const Color soilDark = Color(0xFF3E2723);
+  static const Color leafGreen = Color(0xFF90C695);
 
   @override
   void initState() {
     super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _slideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
     Future.microtask(() {
       context.read<StatisticsProvider>().loadStatistics();
+      _fadeController.forward();
+      _slideController.forward();
     });
   }
 
-  void _refreshData() async {
-    await context.read<StatisticsProvider>().loadStatistics();
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _slideController.dispose();
+    super.dispose();
   }
 
   @override
@@ -34,11 +60,10 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
     return Consumer<StatisticsProvider>(
       builder: (context, provider, _) {
         return Scaffold(
-          backgroundColor: Theme.of(context).colorScheme.background,
+          backgroundColor: const Color(0xFFF5F1E8),
           body: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
+            physics: const BouncingScrollPhysics(),
             slivers: [
-              // Enhanced App Bar with Status Indicators
               SliverToBoxAdapter(
                 child: AppBarBuilder.statistics(
                   context: context,
@@ -47,14 +72,15 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
                   },
                 ),
               ),
-
-              // Pull-to-Refresh with Content
               SliverFillRemaining(
                 hasScrollBody: true,
                 child: RefreshIndicator(
                   onRefresh: () async {
-                    _refreshData();
+                    await context.read<StatisticsProvider>().loadStatistics();
+                    _fadeController.reset();
+                    _fadeController.forward();
                   },
+                  color: cropGreen,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: _buildContent(context, provider),
@@ -70,475 +96,479 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
 
   Widget _buildContent(BuildContext context, StatisticsProvider provider) {
     if (provider.isLoading) {
-      return const SizedBox(
+      return SizedBox(
         height: 400,
         child: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 60,
+                height: 60,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(cropGreen),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Growing your insights...',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     if (provider.error != null) {
-      return SizedBox(
-        height: 400,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(provider.error!),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  context.read<StatisticsProvider>().loadStatistics();
-                },
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _buildErrorState(provider);
     }
 
     if (provider.summary.isEmpty) {
-      return SizedBox(
-        height: 400,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.spa_outlined, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
-              Text(
-                'No Detection History Yet',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Start scanning your crops to build your farm analytics story',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Start Scanning'),
-                onPressed: () {
-                  // Navigate to Dashboard
-                  // This will be implemented in main.dart
-                },
-              ),
-            ],
-          ),
-        ),
-      );
+      return _buildEmptyState();
     }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. HEALTH STATUS STORY CARD
-          _buildHealthStoryCard(context, provider),
-          const SizedBox(height: 24),
-
-          // 2. TIME RANGE FILTER
-          _buildTimeRangeFilter(context),
-          const SizedBox(height: 24),
-
-          // 3. KEY METRICS SECTION - Story Format
-          _buildKeyMetricsStory(context, provider),
-          const SizedBox(height: 24),
-
-          // 4. DISEASE THREAT ASSESSMENT
-          _buildDiseaseThreatAssessment(context, provider),
-          const SizedBox(height: 24),
-
-          // 5. CROP HEALTH JOURNEY TIMELINE
-          _buildCropHealthJourney(context, provider),
-          const SizedBox(height: 24),
-
-          // 6. RECOMMENDATIONS SECTION
-          _buildSmartRecommendations(context, provider),
-          const SizedBox(height: 24),
-
-          // 7. COMPARISON SECTION
-          _buildCropComparison(context, provider),
-          const SizedBox(height: 24),
-
-          // 8. ACTION BUTTONS
-          _buildActionButtons(context, provider),
-
-          const SizedBox(height: 20),
-        ],
+    return FadeTransition(
+      opacity: _fadeController,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 140),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHealthHeroCard(context, provider),
+            const SizedBox(height: 24),
+            _buildTimeRangeFilter(context),
+            const SizedBox(height: 24),
+            _buildQuickStats(context, provider),
+            const SizedBox(height: 24),
+            _buildDiseaseThreatCards(context, provider),
+            const SizedBox(height: 24),
+            _buildHealthTrendChart(context, provider),
+            const SizedBox(height: 24),
+            _buildSmartInsights(context, provider),
+            const SizedBox(height: 24),
+            _buildActionButtons(context, provider),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
 
-  // 1. HEALTH STATUS STORY CARD
-  Widget _buildHealthStoryCard(BuildContext context, StatisticsProvider provider) {
+  Widget _buildHealthHeroCard(BuildContext context, StatisticsProvider provider) {
     final summary = provider.summary;
     final totalDetections = summary['total_detections'] ?? 0;
     final healthyPercentage =
         double.tryParse(summary['healthy_percentage']?.toString() ?? '0') ?? 0;
-    final diseasedPercentage = 100 - healthyPercentage;
 
-    // Determine health status
-    String healthStatus;
     Color statusColor;
-    String statusMessage;
-    IconData statusIcon;
+    String statusEmoji;
+    String statusText;
 
     if (healthyPercentage >= 80) {
-      healthStatus = 'Excellent Health';
-      statusColor = Colors.green;
-      statusMessage = 'Your crops are thriving! Keep up the good work.';
-      statusIcon = Icons.sentiment_very_satisfied;
+      statusColor = leafGreen;
+      statusEmoji = '🌱';
+      statusText = 'Thriving';
     } else if (healthyPercentage >= 60) {
-      healthStatus = 'Good Health';
-      statusColor = Colors.lightGreen;
-      statusMessage = 'Most crops are healthy. Monitor for early signs.';
-      statusIcon = Icons.sentiment_satisfied;
+      statusColor = cropGreen;
+      statusEmoji = '🌿';
+      statusText = 'Growing Well';
     } else if (healthyPercentage >= 40) {
-      healthStatus = 'Caution Required';
-      statusColor = Colors.orange;
-      statusMessage = 'Multiple issues detected. Consider intervention.';
-      statusIcon = Icons.sentiment_neutral;
+      statusColor = sunYellow;
+      statusEmoji = '⚠️';
+      statusText = 'Needs Care';
     } else {
-      healthStatus = 'Critical Attention Needed';
-      statusColor = Colors.red;
-      statusMessage = 'Significant health issues. Immediate action recommended.';
-      statusIcon = Icons.sentiment_very_dissatisfied;
+      statusColor = Colors.orange.shade700;
+      statusEmoji = '🚨';
+      statusText = 'Critical';
     }
 
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0, -0.2),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
+        parent: _slideController,
+        curve: Curves.easeOutCubic,
+      )),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           gradient: LinearGradient(
-            colors: [statusColor.withOpacity(0.1), statusColor.withOpacity(0.05)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
+            colors: [
+              statusColor.withOpacity(0.15),
+              statusColor.withOpacity(0.05),
+            ],
           ),
-          border: Border.all(color: statusColor.withOpacity(0.3), width: 2),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Status Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Farm Health Status',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      healthStatus,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: statusColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    statusIcon,
-                    color: statusColor,
-                    size: 32,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            // Health Meter with Progress
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Overall Health Score',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    Text(
-                      '${healthyPercentage.toStringAsFixed(1)}%',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: statusColor,
-                          ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: healthyPercentage / 100,
-                    minHeight: 12,
-                    backgroundColor: Colors.grey.shade300,
-                    valueColor: AlwaysStoppedAnimation<Color>(statusColor),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Status Message
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                statusMessage,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey.shade900,
-                      height: 1.5,
-                    ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Stats Row
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatsItem(
-                    context,
-                    'Scans Done',
-                    totalDetections.toString(),
-                    Icons.camera_alt,
-                    Colors.blue,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatsItem(
-                    context,
-                    'Healthy',
-                    '${healthyPercentage.toStringAsFixed(0)}%',
-                    Icons.favorite,
-                    Colors.green,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatsItem(
-                    context,
-                    'Issues Found',
-                    '${diseasedPercentage.toStringAsFixed(0)}%',
-                    Icons.warning,
-                    Colors.red,
-                  ),
-                ),
-              ],
+          boxShadow: [
+            BoxShadow(
+              color: statusColor.withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
           ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1.5,
+                ),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withOpacity(0.3),
+                    Colors.white.withOpacity(0.1),
+                  ],
+                ),
+              ),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Farm Health',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: soilDark.withOpacity(0.7),
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Text(
+                                statusEmoji,
+                                style: const TextStyle(fontSize: 28),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                statusText,
+                                style: TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: statusColor,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.0, end: healthyPercentage / 100),
+                        duration: const Duration(milliseconds: 1500),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, child) {
+                          return SizedBox(
+                            width: 100,
+                            height: 100,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 100,
+                                  height: 100,
+                                  child: CircularProgressIndicator(
+                                    value: value,
+                                    strokeWidth: 8,
+                                    backgroundColor: Colors.white.withOpacity(0.3),
+                                    valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                                  ),
+                                ),
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      '${(value * 100).toInt()}%',
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: statusColor,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Health',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: soilDark.withOpacity(0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildQuickStat('🔍', totalDetections.toString(), 'Scans'),
+                        Container(
+                          width: 1,
+                          height: 30,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                        _buildQuickStat(
+                          '🌾',
+                          summary['unique_diseases']?.toString() ?? '0',
+                          'Issues',
+                        ),
+                        Container(
+                          width: 1,
+                          height: 30,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                        _buildQuickStat(
+                          '📊',
+                          '${healthyPercentage.toInt()}%',
+                          'Healthy',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 
-  // Helper for stats items
-  Widget _buildStatsItem(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildQuickStat(String emoji, String value, String label) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-        ),
+        Text(emoji, style: const TextStyle(fontSize: 20)),
         const SizedBox(height: 4),
         Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: soilDark,
+          ),
+        ),
+        Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall,
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  // 2. TIME RANGE FILTER
-  Widget _buildTimeRangeFilter(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Time Period',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            _buildFilterChip('All Time', 0),
-            const SizedBox(width: 12),
-            _buildFilterChip('Last 30 Days', 1),
-            const SizedBox(width: 12),
-            _buildFilterChip('Last 7 Days', 2),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFilterChip(String label, int index) {
-    final isSelected = _selectedTimeRange == index;
-    return FilterChip(
-      selected: isSelected,
-      label: Text(label),
-      onSelected: (selected) {
-        setState(() {
-          _selectedTimeRange = index;
-        });
-      },
-      backgroundColor: Colors.transparent,
-      selectedColor: Colors.green.shade100,
-      side: BorderSide(
-        color: isSelected ? Colors.green.shade600 : Colors.grey.shade300,
-      ),
-    );
-  }
-
-  // 3. KEY METRICS STORY
-  Widget _buildKeyMetricsStory(BuildContext context, StatisticsProvider provider) {
-    final summary = provider.summary;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Your Crop Story',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildStoryLine(
-                  context,
-                  '🔍 Total Detections',
-                  summary['total_detections']?.toString() ?? '0',
-                  'Times you\'ve scanned your crops for health assessment',
-                ),
-                const SizedBox(height: 16),
-                Divider(color: Colors.grey.shade300),
-                const SizedBox(height: 16),
-                _buildStoryLine(
-                  context,
-                  '🦠 Disease Types Found',
-                  summary['unique_diseases']?.toString() ?? '0',
-                  'Different health issues detected across your farm',
-                ),
-                const SizedBox(height: 16),
-                Divider(color: Colors.grey.shade300),
-                const SizedBox(height: 16),
-                _buildStoryLine(
-                  context,
-                  '🏆 Most Common Issue',
-                  summary['most_common_disease'] ?? 'None detected',
-                  'The primary health challenge in your crops',
-                ),
-              ],
-            ),
+          style: TextStyle(
+            fontSize: 11,
+            color: soilDark.withOpacity(0.6),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildStoryLine(
-    BuildContext context,
-    String title,
-    String value,
-    String description,
-  ) {
+  Widget _buildTimeRangeFilter(BuildContext context) {
     return Row(
+      children: [
+        _buildModernFilterChip('All Time', 0, Icons.all_inclusive),
+        const SizedBox(width: 12),
+        _buildModernFilterChip('30 Days', 1, Icons.calendar_month),
+        const SizedBox(width: 12),
+        _buildModernFilterChip('7 Days', 2, Icons.calendar_today),
+      ],
+    );
+  }
+
+  Widget _buildModernFilterChip(String label, int index, IconData icon) {
+    final isSelected = _selectedTimeRange == index;
+    return Expanded(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                _selectedTimeRange = index;
+              });
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? cropGreen
+                    : Colors.white.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected
+                      ? cropGreen
+                      : Colors.grey.shade300,
+                  width: 1.5,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: cropGreen.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
+                    size: 16,
+                    color: isSelected ? Colors.white : soilDark.withOpacity(0.7),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? Colors.white : soilDark,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickStats(BuildContext context, StatisticsProvider provider) {
+    final summary = provider.summary;
+    final mostCommon = summary['most_common_disease'] ?? 'None';
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          flex: 2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
+        Text(
+          '🌾 Farm Overview',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: soilDark,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.5),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
               ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey.shade600,
-                    ),
+            ],
+          ),
+          child: Column(
+            children: [
+              _buildStatRow(
+                '🔍 Total Detections',
+                summary['total_detections']?.toString() ?? '0',
+                'scans completed',
+              ),
+              Divider(height: 32, color: Colors.grey.shade300),
+              _buildStatRow(
+                '🦠 Disease Types',
+                summary['unique_diseases']?.toString() ?? '0',
+                'unique issues found',
+              ),
+              Divider(height: 32, color: Colors.grey.shade300),
+              _buildStatRow(
+                '🏆 Top Issue',
+                mostCommon.length > 20
+                    ? '${mostCommon.substring(0, 20)}...'
+                    : mostCommon,
+                'most common detection',
               ),
             ],
           ),
         ),
-        const SizedBox(width: 16),
+      ],
+    );
+  }
+
+  Widget _buildStatRow(String label, String value, String subtitle) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
         Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green.shade700,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: soilDark,
                 ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: cropGreen,
           ),
         ),
       ],
     );
   }
 
-  // 4. DISEASE THREAT ASSESSMENT
-  Widget _buildDiseaseThreatAssessment(BuildContext context, StatisticsProvider provider) {
+  Widget _buildDiseaseThreatCards(BuildContext context, StatisticsProvider provider) {
     if (provider.diseaseStats.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -547,28 +577,53 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Disease Threat Assessment',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          '⚠️ Threat Assessment',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: soilDark,
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: provider.diseaseStats.length,
+          itemCount: provider.diseaseStats.length > 5 ? 5 : provider.diseaseStats.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final disease = provider.diseaseStats[index];
-            final threatLevel = _getThreatLevel(disease.percentage);
+            final threatColor = _getThreatColor(disease.percentage);
 
-            return Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
+            return TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: Duration(milliseconds: 400 + (index * 100)),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) {
+                return Transform.translate(
+                  offset: Offset(0, 20 * (1 - value)),
+                  child: Opacity(
+                    opacity: value,
+                    child: child,
+                  ),
+                );
+              },
+              child: Container(
                 padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: threatColor.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: threatColor.withOpacity(0.1),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -581,22 +636,20 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
                             children: [
                               Text(
                                 disease.disease,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyLarge
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: soilDark,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Threat Level: $threatLevel',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: Colors.grey.shade600,
-                                    ),
+                                _getThreatLabel(disease.percentage),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: threatColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
@@ -607,41 +660,52 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: _getThreatColor(disease.percentage)
-                                .withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
+                            gradient: LinearGradient(
+                              colors: [
+                                threatColor.withOpacity(0.2),
+                                threatColor.withOpacity(0.1),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: threatColor.withOpacity(0.3),
+                            ),
                           ),
                           child: Text(
                             '${disease.percentage.toStringAsFixed(1)}%',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: _getThreatColor(disease.percentage),
-                                ),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: threatColor,
+                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: disease.percentage / 100,
-                        minHeight: 8,
-                        backgroundColor: Colors.grey.shade300,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          _getThreatColor(disease.percentage),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Detected ${disease.count} time${disease.count != 1 ? 's' : ''} • Last seen: ${_formatDate(disease.lastDetected)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade700,
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: disease.percentage / 100),
+                      duration: const Duration(milliseconds: 1000),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, child) {
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            value: value,
+                            minHeight: 8,
+                            backgroundColor: Colors.grey.shade200,
+                            valueColor: AlwaysStoppedAnimation<Color>(threatColor),
                           ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${disease.count} detection${disease.count != 1 ? 's' : ''} • Last: ${_formatDate(disease.lastDetected)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),
@@ -653,8 +717,7 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
     );
   }
 
-  // 5. CROP HEALTH JOURNEY TIMELINE
-  Widget _buildCropHealthJourney(BuildContext context, StatisticsProvider provider) {
+  Widget _buildHealthTrendChart(BuildContext context, StatisticsProvider provider) {
     if (provider.timelineData.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -665,293 +728,357 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Your Crop Health Journey',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          '📈 Activity Timeline',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: soilDark,
+          ),
         ),
         const SizedBox(height: 16),
-        Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Detection Activity (Last 7 Days)',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: 120,
-                  child: _buildSimpleBarChart(recentData),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'You\'ve been actively monitoring your crops. Keep up the good habits!',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey.shade600,
-                        fontStyle: FontStyle.italic,
-                      ),
-                ),
-              ],
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.5),
+              width: 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Detection Activity (Last 7 Days)',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: soilDark.withOpacity(0.7),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                height: 95,
+                child: _buildAnimatedBarChart(recentData),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: leafGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.lightbulb, color: cropGreen, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Consistent monitoring leads to healthier crops',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: soilDark.withOpacity(0.8),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  // Simple bar chart visualization
-  Widget _buildSimpleBarChart(List<TimelineData> data) {
+  Widget _buildAnimatedBarChart(List<dynamic> data) {
     if (data.isEmpty) return const SizedBox.shrink();
 
-    final maxCount = data.isNotEmpty
-        ? data.map((e) => e.count).reduce((a, b) => a > b ? a : b)
-        : 1;
+    final maxCount = data.fold<int>(0, (prev, item) {
+      final count = item.count is int ? item.count : 0;
+      return count > prev ? count : prev;
+    });
+
+    if (maxCount == 0) return const SizedBox.shrink();
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: data.map((item) {
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Expanded(
-              child: Container(
-                width: 30,
-                decoration: BoxDecoration(
-                  color: Colors.green.shade600,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(8),
-                    topRight: Radius.circular(8),
-                  ),
-                ),
-                height: (item.count / maxCount) * 100,
-              ),
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: data.asMap().entries.map((entry) {
+        final index = entry.key;
+        final item = entry.value;
+        final itemCount = item.count is int ? item.count : 0;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: SizedBox(
+            width: 35,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: Duration(milliseconds: 600 + (index * 100)),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) {
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              leafGreen,
+                              cropGreen,
+                            ],
+                          ),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: cropGreen.withOpacity(0.3),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        height: ((itemCount / maxCount) * 120 * value),
+                        alignment: Alignment.topCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            itemCount.toString(),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _formatDateShort(item.date ?? DateTime.now()),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: soilDark.withOpacity(0.6),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-            const SizedBox(height: 8),
-            Text(
-              item.count.toString(),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _formatDateShort(item.date),
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-          ],
+          ),
         );
       }).toList(),
     );
   }
 
-  // 6. SMART RECOMMENDATIONS
-  Widget _buildSmartRecommendations(BuildContext context, StatisticsProvider provider) {
+  Widget _buildSmartInsights(BuildContext context, StatisticsProvider provider) {
     final summary = provider.summary;
     final healthyPercentage =
         double.tryParse(summary['healthy_percentage']?.toString() ?? '0') ?? 0;
-    final diseaseStats = provider.diseaseStats;
 
-    List<String> recommendations = [];
+    List<Map<String, dynamic>> insights = [];
 
     if (healthyPercentage >= 80) {
-      recommendations.add('✅ Maintain current care practices');
-      recommendations.add('📋 Continue regular monitoring schedule');
+      insights.add({
+        'emoji': '✅',
+        'text': 'Maintain current care practices',
+        'color': leafGreen,
+      });
+      insights.add({
+        'emoji': '📋',
+        'text': 'Continue regular monitoring',
+        'color': cropGreen,
+      });
     } else if (healthyPercentage >= 60) {
-      recommendations.add('⚠️ Increase monitoring frequency');
-      recommendations.add('🧪 Consider preventive treatments');
-    } else if (healthyPercentage >= 40) {
-      recommendations.add('🚨 Implement intervention plan');
-      recommendations.add('👨‍🌾 Consult agricultural specialist');
+      insights.add({
+        'emoji': '⚠️',
+        'text': 'Increase monitoring frequency',
+        'color': sunYellow,
+      });
+      insights.add({
+        'emoji': '🧪',
+        'text': 'Consider preventive treatments',
+        'color': Colors.orange,
+      });
     } else {
-      recommendations.add('🚨 Urgent action required');
-      recommendations.add('📞 Contact farm management support');
+      insights.add({
+        'emoji': '🚨',
+        'text': 'Urgent action recommended',
+        'color': Colors.red.shade600,
+      });
+      insights.add({
+        'emoji': '👨‍🌾',
+        'text': 'Consult agricultural specialist',
+        'color': Colors.red.shade700,
+      });
     }
 
-    if (diseaseStats.isNotEmpty) {
-      final topDisease = diseaseStats.first;
-      recommendations.add(
-          '🔍 Focus treatment on ${topDisease.disease} (${topDisease.percentage.toStringAsFixed(1)}%)');
+    if (provider.diseaseStats.isNotEmpty) {
+      final top = provider.diseaseStats.first;
+      insights.add({
+        'emoji': '🎯',
+        'text': 'Focus on ${top.disease}',
+        'color': earthBrown,
+      });
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'AI-Powered Recommendations',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: recommendations
-                  .asMap()
-                  .entries
-                  .map((entry) {
-                    final index = entry.key;
-                    final rec = entry.value;
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        bottom: index < recommendations.length - 1 ? 12 : 0,
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              rec,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    height: 1.6,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  })
-                  .toList(),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // 7. CROP COMPARISON
-  Widget _buildCropComparison(BuildContext context, StatisticsProvider provider) {
-    final summary = provider.summary;
-    final totalDetections = summary['total_detections'] ?? 0;
-    final healthyPercentage =
-        double.tryParse(summary['healthy_percentage']?.toString() ?? '0') ?? 0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Health Metrics Comparison',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-        const SizedBox(height: 16),
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: _buildMetricCard(
-                context,
-                'Monitoring Score',
-                _calculateMonitoringScore(totalDetections),
-                'Based on scan frequency',
-                Colors.blue,
+            Text(
+              '💡 Smart Recommendations',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: soilDark,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                context,
-                'Health Index',
-                healthyPercentage.toStringAsFixed(0),
-                'Current farm health',
-                Colors.green,
+            Tooltip(
+              message: 'AI-generated actionable insights based on your farm\'s current health',
+              child: Icon(
+                Icons.info_outline,
+                size: 18,
+                color: soilDark.withOpacity(0.5),
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                skyBlue.withOpacity(0.1),
+                leafGreen.withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.5),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            children: insights.asMap().entries.map((entry) {
+              final index = entry.key;
+              final insight = entry.value;
+
+              return TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: Duration(milliseconds: 500 + (index * 150)),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(30 * (1 - value), 0),
+                    child: Opacity(
+                      opacity: value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index < insights.length - 1 ? 16 : 0,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: insight['color'].withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          insight['emoji'],
+                          style: const TextStyle(fontSize: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          insight['text'],
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: soilDark,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildMetricCard(
-    BuildContext context,
-    String title,
-    String value,
-    String subtitle,
-    Color color,
-  ) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
-          ),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.trending_up,
-                color: color,
-                size: 24,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '$value%',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Colors.grey.shade500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 8. ACTION BUTTONS
   Widget _buildActionButtons(BuildContext context, StatisticsProvider provider) {
     return Column(
       children: [
-        SizedBox(
+        Container(
           width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [cropGreen, leafGreen],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: cropGreen.withOpacity(0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
           child: ElevatedButton.icon(
-            icon: const Icon(Icons.download),
-            label: const Text('Export Health Report'),
+            icon: const Icon(Icons.download, color: Colors.white),
+            label: const Text(
+              'Export Health Report',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
             onPressed: () => _showExportOptions(),
             style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
           ),
@@ -960,15 +1087,25 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            icon: const Icon(Icons.refresh),
-            label: const Text('Refresh Data'),
-            onPressed: () {
-              context.read<StatisticsProvider>().loadStatistics();
+            icon: Icon(Icons.refresh, color: cropGreen),
+            label: Text(
+              'Refresh Data',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: cropGreen,
+              ),
+            ),
+            onPressed: () async {
+              await context.read<StatisticsProvider>().loadStatistics();
+              _fadeController.reset();
+              _fadeController.forward();
             },
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
+              side: BorderSide(color: cropGreen, width: 2),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
           ),
@@ -977,19 +1114,182 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
     );
   }
 
-  // HELPER METHODS
-  String _getThreatLevel(double percentage) {
-    if (percentage >= 50) return '🔴 Critical';
-    if (percentage >= 30) return '🟠 High';
-    if (percentage >= 10) return '🟡 Medium';
-    return '🟢 Low';
+  Widget _buildEmptyState() {
+    return SizedBox(
+      height: 500,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.elasticOut,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: child,
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: leafGreen.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.eco,
+                  size: 80,
+                  color: cropGreen,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No Detection History Yet',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: soilDark,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                'Start scanning your crops to build your farm analytics story',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey.shade600,
+                  height: 1.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [cropGreen, leafGreen],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: cropGreen.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.camera_alt, color: Colors.white),
+                label: const Text(
+                  'Start Scanning',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                onPressed: () {
+                  // Navigate to Dashboard
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(StatisticsProvider provider) {
+    return SizedBox(
+      height: 400,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.error_outline,
+                size: 60,
+                color: Colors.red.shade400,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Oops! Something went wrong',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: soilDark,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                provider.error ?? 'Unknown error',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try Again'),
+              onPressed: () {
+                context.read<StatisticsProvider>().loadStatistics();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: cropGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getThreatLabel(double percentage) {
+    if (percentage >= 50) return '🔴 Critical Threat';
+    if (percentage >= 30) return '🟠 High Risk';
+    if (percentage >= 10) return '🟡 Medium Risk';
+    return '🟢 Low Risk';
   }
 
   Color _getThreatColor(double percentage) {
-    if (percentage >= 50) return Colors.red;
-    if (percentage >= 30) return Colors.orange;
-    if (percentage >= 10) return Colors.amber;
-    return Colors.green;
+    if (percentage >= 50) return Colors.red.shade600;
+    if (percentage >= 30) return Colors.orange.shade600;
+    if (percentage >= 10) return Colors.amber.shade600;
+    return leafGreen;
   }
 
   String _formatDate(DateTime date) {
@@ -1006,43 +1306,134 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
     return '${date.month}/${date.day}';
   }
 
-  String _calculateMonitoringScore(int detections) {
-    if (detections >= 20) return '100';
-    if (detections >= 10) return '80';
-    if (detections >= 5) return '60';
-    return '${(detections * 10).clamp(0, 50)}';
+  void _showExportOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(24),
+          ),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Export Health Report',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: soilDark,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Choose your preferred format',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildExportOption(
+              icon: Icons.table_chart,
+              label: 'CSV Report',
+              subtitle: 'Spreadsheet format',
+              color: Colors.green,
+              onTap: () {
+                Navigator.pop(context);
+                _exportAsCSV();
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildExportOption(
+              icon: Icons.picture_as_pdf,
+              label: 'PDF Report',
+              subtitle: 'Printable document',
+              color: Colors.red,
+              onTap: () {
+                Navigator.pop(context);
+                _exportAsPDF();
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _showExportOptions() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Export Health Report'),
-        content: const Text('Choose your preferred format:'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+  Widget _buildExportOption({
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: color.withOpacity(0.3),
+              width: 1.5,
+            ),
           ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.table_chart),
-            label: const Text('CSV'),
-            onPressed: () {
-              // Export CSV
-              Navigator.pop(context);
-              _exportAsCSV();
-            },
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: soilDark,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade400),
+            ],
           ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.picture_as_pdf),
-            label: const Text('PDF'),
-            onPressed: () {
-              // Export PDF
-              Navigator.pop(context);
-              _exportAsPDF();
-            },
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1050,66 +1441,281 @@ class _StatisticsPageRedesignedState extends State<StatisticsPageRedesigned> {
   Future<void> _exportAsCSV() async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('📊 Exporting CSV...')),
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.downloading, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Exporting CSV...'),
+            ],
+          ),
+          backgroundColor: cropGreen,
+          duration: const Duration(seconds: 1),
+        ),
       );
-      
-      // Get current statistics
+
       final stats = context.read<StatisticsProvider>();
-      
-      // Convert disease stats to detections format for export
       final detections = stats.diseaseStats.map((ds) => {
         'disease': ds.disease,
         'count': ds.count.toString(),
         'percentage': '${ds.percentage.toStringAsFixed(1)}%',
         'last_detected': ds.lastDetected.toIso8601String(),
       }).toList();
-      
-      // Export to CSV
-      final file = await ExportService.exportToCSV(
-        detections: detections,
-      );
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✅ CSV saved: ${file.path.split('/').last}')),
-      );
+
+      final file = await ExportService.exportToCSV(detections: detections);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('CSV saved: ${file.path.split('/').last}'),
+                ),
+              ],
+            ),
+            backgroundColor: leafGreen,
+            action: SnackBarAction(
+              label: 'OPEN',
+              textColor: Colors.white,
+              onPressed: () {
+                _openFile(file);
+              },
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Export failed: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Export failed: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _exportAsPDF() async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('📄 Exporting PDF...')),
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.downloading, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Exporting PDF...'),
+            ],
+          ),
+          backgroundColor: cropGreen,
+          duration: const Duration(seconds: 1),
+        ),
       );
-      
-      // Get current statistics
+
       final stats = context.read<StatisticsProvider>();
-      
-      // Convert disease stats to detections format for export
       final detections = stats.diseaseStats.map((ds) => {
         'disease': ds.disease,
         'count': ds.count.toString(),
         'percentage': '${ds.percentage.toStringAsFixed(1)}%',
         'last_detected': ds.lastDetected.toIso8601String(),
       }).toList();
-      
-      // Export to PDF
+
       final file = await ExportService.exportToPDF(
         detections: detections,
         summary: stats.summary,
         diseaseStats: stats.diseaseStats,
       );
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✅ PDF saved: ${file.path.split('/').last}')),
-      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('PDF saved: ${file.path.split('/').last}'),
+                ),
+              ],
+            ),
+            backgroundColor: leafGreen,
+            action: SnackBarAction(
+              label: 'OPEN',
+              textColor: Colors.white,
+              onPressed: () {
+                _openFile(file);
+              },
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Export failed: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Export failed: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Open folder where file is saved
+  Future<void> _openFile(File file) async {
+    try {
+      final directory = file.parent;
+      final directoryPath = directory.path;
+      
+      print('📂 Opening directory: $directoryPath');
+      
+      // Platform-specific code to open the folder
+      if (Platform.isWindows) {
+        // On Windows, use 'explorer.exe' to open the folder and select the file
+        await Process.run(
+          'explorer.exe',
+          ['/select,', file.path],
+        );
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.folder_open, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Opening folder with your file',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: leafGreen,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else if (Platform.isMacOS) {
+        // On macOS, use 'open' command to open the folder
+        await Process.run('open', ['-R', file.path]);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.folder_open, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Opening folder with your file',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: leafGreen,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else if (Platform.isLinux) {
+        // On Linux, use file manager or open the file
+        await Process.run('xdg-open', [directoryPath]);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.folder_open, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Opening folder with your file',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: leafGreen,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        // For mobile platforms (Android, iOS), try to open the file with default app
+        await OpenFile.open(file.path);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.file_open, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Opening file...',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: leafGreen,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error opening file/folder: $e');
+      
+      // Fallback: show file location in snackbar
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.info, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'File saved at:\n${file.path}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: soilDark.withOpacity(0.8),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 }

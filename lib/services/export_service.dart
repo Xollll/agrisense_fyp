@@ -27,46 +27,50 @@ class ExportService {
   static const String _csvFileName = 'agrisense_detections_';
   static const String _pdfFileName = 'agrisense_report_';
 
-  /// Export detections to CSV format
+  /// Export disease statistics to CSV format
   static Future<File> exportToCSV({
     required List<Map<String, dynamic>> detections,
   }) async {
     try {
       print('📊 Exporting to CSV...');
 
-      // Prepare CSV data
+      // Prepare CSV data from disease statistics
       List<List<dynamic>> csvData = [
         // Header row
         [
-          'Date',
-          'Disease Label',
-          'Confidence',
-          'Recommendation',
-          'Timestamp',
+          'Disease',
+          'Detection Count',
+          'Percentage (%)',
+          'Last Detected',
         ],
       ];
 
-      // Data rows
+      // Data rows - detections here are already formatted disease stats
       for (var detection in detections) {
-        final timestamp = detection['timestamp'] as String? ?? 'N/A';
-        final date = timestamp.isNotEmpty
-            ? DateTime.tryParse(timestamp)?.toLocal().toString().split('.')[0] ?? 'N/A'
-            : 'N/A';
-
         csvData.add([
-          date,
-          detection['disease_label'] ?? 'Unknown',
-          (detection['confidence'] as num?)?.toStringAsFixed(2) ?? 'N/A',
-          detection['recommendation'] ?? 'None',
-          timestamp,
+          detection['disease'] ?? 'Unknown',
+          detection['count'] ?? '0',
+          detection['percentage'] ?? '0%',
+          detection['last_detected'] ?? 'N/A',
         ]);
       }
 
       // Convert to CSV string
       String csvString = const ListToCsvConverter().convert(csvData);
 
-      // Get temporary directory
-      final directory = await getTemporaryDirectory();
+      // Get downloads directory or fall back to documents
+      Directory? directory;
+      try {
+        directory = await getDownloadsDirectory();
+      } catch (e) {
+        print('⚠️ Downloads directory not available, using app documents directory');
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      if (directory == null) {
+        throw Exception('Unable to access file storage directory');
+      }
+
       final fileName =
           '$_csvFileName${DateTime.now().millisecondsSinceEpoch}.csv';
       final file = File('${directory.path}/$fileName');
@@ -82,7 +86,7 @@ class ExportService {
     }
   }
 
-  /// Export statistics and detections to PDF report
+  /// Export statistics and disease breakdown to PDF report
   static Future<File> exportToPDF({
     required List<Map<String, dynamic>> detections,
     required Map<String, dynamic> summary,
@@ -94,7 +98,7 @@ class ExportService {
       final pdf = pw.Document();
 
       // Calculate some stats for the report
-      final totalDetections = detections.length;
+      final totalDetections = summary['total_detections'] ?? 0;
       final healthyPercentage = summary['healthy_percentage'] ?? '0.0';
       final diseased = summary['diseased_percentage'] ?? '0.0';
       final mostCommon = summary['most_common_disease'] ?? 'None';
@@ -109,9 +113,9 @@ class ExportService {
             children: [
               // Title
               pw.Text(
-                'AgriSense Detection Report',
+                'AgriSense Farm Health Report',
                 style: pw.TextStyle(
-                  fontSize: 24,
+                  fontSize: 28,
                   fontWeight: pw.FontWeight.bold,
                 ),
               ),
@@ -120,299 +124,191 @@ class ExportService {
               // Export date
               pw.Text(
                 'Generated: ${DateTime.now().toString().split('.')[0]}',
-                style: const pw.TextStyle(fontSize: 12),
+                style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
               ),
-              pw.SizedBox(height: 20),
+              pw.SizedBox(height: 24),
 
-              // Summary section
+              // Summary section header
               pw.Text(
-                'Summary',
+                'Executive Summary',
                 style: pw.TextStyle(
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: pw.FontWeight.bold,
                 ),
               ),
-              pw.SizedBox(height: 10),
+              pw.SizedBox(height: 12),
 
-              // Summary table
-              pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  // Header row
-                  pw.TableRow(
-                    decoration: const pw.BoxDecoration(
-                      color: PdfColors.grey300,
+              // Summary statistics in a clean format
+              pw.Container(
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey300),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Total Scans:', style: const pw.TextStyle(fontSize: 11)),
+                        pw.Text('$totalDetections', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                      ],
                     ),
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Metric',
-                            style: pw.TextStyle(
-                                fontWeight: pw.FontWeight.bold)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Value',
-                            style: pw.TextStyle(
-                                fontWeight: pw.FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  // Data rows
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Total Detections'),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('$totalDetections'),
-                      ),
-                    ],
-                  ),
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Unique Diseases'),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('$uniqueDiseases'),
-                      ),
-                    ],
-                  ),
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Healthy (%)',
-                            textAlign: pw.TextAlign.left),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('$healthyPercentage%'),
-                      ),
-                    ],
-                  ),
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Diseased (%)',
-                            textAlign: pw.TextAlign.left),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('$diseased%'),
-                      ),
-                    ],
-                  ),
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Most Common Disease'),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('$mostCommon'),
-                      ),
-                    ],
-                  ),
-                ],
+                    pw.SizedBox(height: 8),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Unique Issues:', style: const pw.TextStyle(fontSize: 11)),
+                        pw.Text('$uniqueDiseases', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Farm Health:', style: const pw.TextStyle(fontSize: 11)),
+                        pw.Text('${healthyPercentage.toString()}%', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.green)),
+                      ],
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Issues Found:', style: const pw.TextStyle(fontSize: 11)),
+                        pw.Text('${diseased.toString()}%', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.red)),
+                      ],
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Most Common:', style: const pw.TextStyle(fontSize: 11)),
+                        pw.Text('$mostCommon', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              pw.SizedBox(height: 20),
+              pw.SizedBox(height: 24),
 
               // Disease breakdown section
               pw.Text(
                 'Disease Breakdown',
                 style: pw.TextStyle(
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: pw.FontWeight.bold,
                 ),
               ),
-              pw.SizedBox(height: 10),
+              pw.SizedBox(height: 12),
 
               // Disease table
               pw.Table(
-                border: pw.TableBorder.all(),
+                border: pw.TableBorder.all(color: PdfColors.grey300),
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(2.5),
+                  1: const pw.FlexColumnWidth(1.2),
+                  2: const pw.FlexColumnWidth(1.2),
+                },
                 children: [
                   // Header row
                   pw.TableRow(
-                    decoration: const pw.BoxDecoration(
-                      color: PdfColors.grey300,
-                    ),
+                    decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Text('Disease',
                             style: pw.TextStyle(
-                                fontWeight: pw.FontWeight.bold)),
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 11)),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Text('Count',
                             style: pw.TextStyle(
-                                fontWeight: pw.FontWeight.bold)),
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 11)),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Text('Percentage',
                             style: pw.TextStyle(
-                                fontWeight: pw.FontWeight.bold)),
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 11)),
                       ),
                     ],
                   ),
-                  // Disease rows
+                  // Disease rows from statistics
                   ...diseaseStats.map((stat) => pw.TableRow(
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(stat.disease),
+                        child: pw.Text(stat.disease, style: const pw.TextStyle(fontSize: 10)),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('${stat.count}'),
+                        child: pw.Text('${stat.count}', style: const pw.TextStyle(fontSize: 10)),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Text(
-                            '${stat.percentage.toStringAsFixed(2)}%'),
+                            '${stat.percentage.toStringAsFixed(1)}%',
+                            style: const pw.TextStyle(fontSize: 10)),
                       ),
                     ],
                   )),
                 ],
+              ),
+              pw.SizedBox(height: 24),
+
+              // Footer note
+              pw.Container(
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.grey100,
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Report Notes:',
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+                    ),
+                    pw.SizedBox(height: 6),
+                    pw.Text(
+                      '• This report shows the aggregated disease statistics for your farm',
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                    pw.Text(
+                      '• Percentages are calculated from total scans',
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                    pw.Text(
+                      '• Review the smart recommendations in the app for actionable insights',
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
       );
 
-      // Add detailed detections page if there are many
-      if (detections.isNotEmpty) {
-        pdf.addPage(
-          pw.Page(
-            pageFormat: PdfPageFormat.a4,
-            build: (pw.Context context) => pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  'Detection History',
-                  style: pw.TextStyle(
-                    fontSize: 16,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 10),
-
-                // Detections table (limited to first 20 for space)
-                pw.Table(
-                  border: pw.TableBorder.all(),
-                  columnWidths: {
-                    0: const pw.FlexColumnWidth(2),
-                    1: const pw.FlexColumnWidth(2),
-                    2: const pw.FlexColumnWidth(1.5),
-                    3: const pw.FlexColumnWidth(2.5),
-                  },
-                  children: [
-                    // Header
-                    pw.TableRow(
-                      decoration:
-                          const pw.BoxDecoration(color: PdfColors.grey300),
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('Date',
-                              style: pw.TextStyle(
-                                  fontWeight: pw.FontWeight.bold,
-                                  fontSize: 10)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('Disease',
-                              style: pw.TextStyle(
-                                  fontWeight: pw.FontWeight.bold,
-                                  fontSize: 10)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('Confidence',
-                              style: pw.TextStyle(
-                                  fontWeight: pw.FontWeight.bold,
-                                  fontSize: 10)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('Recommendation',
-                              style: pw.TextStyle(
-                                  fontWeight: pw.FontWeight.bold,
-                                  fontSize: 10)),
-                        ),
-                      ],
-                    ),
-                    // Data rows (limit to 20)
-                    ...detections.take(20).map((detection) {
-                      final timestamp =
-                          detection['timestamp'] as String? ?? 'N/A';
-                      final date = timestamp.isNotEmpty
-                          ? DateTime.tryParse(timestamp)
-                                  ?.toLocal()
-                                  .toString()
-                                  .split('.')[0] ??
-                              'N/A'
-                          : 'N/A';
-                      return pw.TableRow(
-                        children: [
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text(date, style: const pw.TextStyle(fontSize: 9)),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text(
-                                detection['disease_label'] ?? 'Unknown',
-                                style: const pw.TextStyle(fontSize: 9)),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text(
-                                '${((detection['confidence'] as num?)?.toStringAsFixed(2)) ?? 'N/A'}',
-                                style: const pw.TextStyle(fontSize: 9)),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text(
-                                detection['recommendation'] ?? 'None',
-                                style: const pw.TextStyle(fontSize: 8)),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
-
-                if (detections.length > 20)
-                  pw.SizedBox(
-                    height: 10,
-                  ),
-                if (detections.length > 20)
-                  pw.Text(
-                    'Note: Showing first 20 detections. Export CSV for complete history.',
-                    style: const pw.TextStyle(
-                      fontSize: 10,
-                      color: PdfColors.grey,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
+      // Save to file
+      Directory? directory;
+      try {
+        directory = await getDownloadsDirectory();
+      } catch (e) {
+        print('⚠️ Downloads directory not available, using app documents directory');
+        directory = await getApplicationDocumentsDirectory();
       }
 
-      // Save to file
-      final directory = await getTemporaryDirectory();
+      if (directory == null) {
+        throw Exception('Unable to access file storage directory');
+      }
+
       final fileName =
           '$_pdfFileName${DateTime.now().millisecondsSinceEpoch}.pdf';
       final file = File('${directory.path}/$fileName');

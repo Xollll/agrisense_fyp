@@ -167,7 +167,7 @@ class _MainWrapperState extends State<MainWrapper> {
       title: 'Statistics',
       icon: Icons.bar_chart_outlined,
       selectedIcon: Icons.bar_chart,
-      page: const StatisticsPageRedesigned(),
+      page: const StatisticsPageModern(),
     ),
     NavigationItem(
       title: 'History',
