@@ -154,10 +154,7 @@ class SettingsPage extends StatelessWidget {
                   subtitle: "View our privacy policy",
                   icon: Icons.privacy_tip_rounded,
                   iconColor: const Color(0xFF8B5CF6),
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    // Open privacy policy
-                  },
+                  onTap: () => _showPrivacyPolicyDialog(context),
                   isDarkMode: isDarkMode,
                 ),
                 const SizedBox(height: 12),
@@ -167,10 +164,7 @@ class SettingsPage extends StatelessWidget {
                   subtitle: "Get help or send feedback",
                   icon: Icons.help_rounded,
                   iconColor: const Color(0xFF10B981),
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    // Open support
-                  },
+                  onTap: () => _showHelpSupportDialog(context),
                   isDarkMode: isDarkMode,
                 ),
 
@@ -782,6 +776,218 @@ class SettingsPage extends StatelessWidget {
           ],
         ),
         actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacyPolicyDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.privacy_tip_rounded,
+                color: Color(0xFF8B5CF6),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text('Privacy Policy'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Data Protection',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'AgriSense respects your privacy. We collect minimal data necessary for disease detection and only use it to improve your experience.',
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Data Usage',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '• Farm images are processed locally on your device\n• Detection results are stored securely\n• No personal data is shared with third parties\n• You can delete your data anytime',
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontSize: 13,
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Contact Us',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'For privacy concerns, contact us at: privacy@agrisense.app',
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Close',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B5CF6),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Understood'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHelpSupportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.help_rounded,
+                color: Color(0xFF10B981),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text('Help & Support'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Getting Started',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '1. Go to Dashboard to see live detection\n2. Ensure good lighting for accurate results\n3. Diseased plants will be highlighted\n4. View recommendations for treatment',
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontSize: 13,
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Common Issues',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Q: Detection not working?\nA: Check your internet connection and ensure the server is running.\n\nQ: Inaccurate results?\nA: Improve lighting and ensure plants are visible.',
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontSize: 13,
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Contact Support',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Email: support@agrisense.app\nPhone: +1-800-AGRI-SENSE',
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Close',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context),
             style: ElevatedButton.styleFrom(

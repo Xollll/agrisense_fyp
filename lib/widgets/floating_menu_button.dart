@@ -162,8 +162,8 @@ class _FloatingMenuButtonState extends State<FloatingMenuButton>
         Positioned(
           bottom: 100,
           right: 30,
-          child: GestureDetector(
-            onTap: () {},
+          child: IgnorePointer(
+            ignoring: !_isMenuOpen,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,

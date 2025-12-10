@@ -57,10 +57,12 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Consumer<StatisticsProvider>(
       builder: (context, provider, _) {
         return Scaffold(
-          backgroundColor: const Color(0xFFF5F1E8),
+          backgroundColor: Theme.of(context).colorScheme.background,
           body: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
@@ -83,7 +85,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                   color: cropGreen,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    child: _buildContent(context, provider),
+                    child: _buildContent(context, provider, isDarkMode),
                   ),
                 ),
               ),
@@ -94,7 +96,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     );
   }
 
-  Widget _buildContent(BuildContext context, StatisticsProvider provider) {
+  Widget _buildContent(BuildContext context, StatisticsProvider provider, bool isDarkMode) {
     if (provider.isLoading) {
       return SizedBox(
         height: 400,
@@ -136,19 +138,19 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHealthHeroCard(context, provider),
+            _buildHealthHeroCard(context, provider, isDarkMode),
             const SizedBox(height: 24),
-            _buildTimeRangeFilter(context),
+            _buildTimeRangeFilter(context, isDarkMode),
             const SizedBox(height: 24),
-            _buildQuickStats(context, provider),
+            _buildQuickStats(context, provider, isDarkMode),
             const SizedBox(height: 24),
-            _buildDiseaseThreatCards(context, provider),
+            _buildDiseaseThreatCards(context, provider, isDarkMode),
             const SizedBox(height: 24),
-            _buildHealthTrendChart(context, provider),
+            _buildHealthTrendChart(context, provider, isDarkMode),
             const SizedBox(height: 24),
-            _buildSmartInsights(context, provider),
+            _buildSmartInsights(context, provider, isDarkMode),
             const SizedBox(height: 24),
-            _buildActionButtons(context, provider),
+            _buildActionButtons(context, provider, isDarkMode),
             const SizedBox(height: 20),
           ],
         ),
@@ -156,7 +158,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     );
   }
 
-  Widget _buildHealthHeroCard(BuildContext context, StatisticsProvider provider) {
+  Widget _buildHealthHeroCard(BuildContext context, StatisticsProvider provider, bool isDarkMode) {
     final summary = provider.summary;
     final totalDetections = summary['total_detections'] ?? 0;
     final healthyPercentage =
@@ -219,16 +221,23 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
+                  color: isDarkMode 
+                      ? Colors.white.withOpacity(0.1) 
+                      : Colors.white.withOpacity(0.2),
                   width: 1.5,
                 ),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withOpacity(0.3),
-                    Colors.white.withOpacity(0.1),
-                  ],
+                  colors: isDarkMode
+                      ? [
+                          Colors.white.withOpacity(0.05),
+                          Colors.white.withOpacity(0.02),
+                        ]
+                      : [
+                          Colors.white.withOpacity(0.3),
+                          Colors.white.withOpacity(0.1),
+                        ],
                 ),
               ),
               padding: const EdgeInsets.all(24),
@@ -245,7 +254,9 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                             'Farm Health',
                             style: TextStyle(
                               fontSize: 14,
-                              color: soilDark.withOpacity(0.7),
+                              color: isDarkMode 
+                                  ? Colors.grey.shade400
+                                  : soilDark.withOpacity(0.7),
                               fontWeight: FontWeight.w500,
                               letterSpacing: 0.5,
                             ),
@@ -288,7 +299,9 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                                   child: CircularProgressIndicator(
                                     value: value,
                                     strokeWidth: 8,
-                                    backgroundColor: Colors.white.withOpacity(0.3),
+                                    backgroundColor: isDarkMode
+                                        ? Colors.white.withOpacity(0.15)
+                                        : Colors.white.withOpacity(0.3),
                                     valueColor: AlwaysStoppedAnimation<Color>(statusColor),
                                   ),
                                 ),
@@ -389,7 +402,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     );
   }
 
-  Widget _buildTimeRangeFilter(BuildContext context) {
+  Widget _buildTimeRangeFilter(BuildContext context, bool isDarkMode) {
     return Row(
       children: [
         _buildModernFilterChip('All Time', 0, Icons.all_inclusive),
@@ -468,7 +481,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     );
   }
 
-  Widget _buildQuickStats(BuildContext context, StatisticsProvider provider) {
+  Widget _buildQuickStats(BuildContext context, StatisticsProvider provider, bool isDarkMode) {
     final summary = provider.summary;
     final mostCommon = summary['most_common_disease'] ?? 'None';
 
@@ -487,15 +500,19 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.8),
+            color: isDarkMode 
+                ? Colors.white.withOpacity(0.08)
+                : Colors.white.withOpacity(0.8),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withOpacity(0.5),
+              color: isDarkMode
+                  ? Colors.white.withOpacity(0.15)
+                  : Colors.white.withOpacity(0.5),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.05),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -507,20 +524,23 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                 '🔍 Total Detections',
                 summary['total_detections']?.toString() ?? '0',
                 'scans completed',
+                isDarkMode,
               ),
-              Divider(height: 32, color: Colors.grey.shade300),
+              Divider(height: 32, color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
               _buildStatRow(
                 '🦠 Disease Types',
                 summary['unique_diseases']?.toString() ?? '0',
                 'unique issues found',
+                isDarkMode,
               ),
-              Divider(height: 32, color: Colors.grey.shade300),
+              Divider(height: 32, color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
               _buildStatRow(
                 '🏆 Top Issue',
                 mostCommon.length > 20
                     ? '${mostCommon.substring(0, 20)}...'
                     : mostCommon,
                 'most common detection',
+                isDarkMode,
               ),
             ],
           ),
@@ -529,7 +549,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     );
   }
 
-  Widget _buildStatRow(String label, String value, String subtitle) {
+  Widget _buildStatRow(String label, String value, String subtitle, bool isDarkMode) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -542,7 +562,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: soilDark,
+                  color: isDarkMode ? Colors.grey.shade300 : soilDark,
                 ),
               ),
               const SizedBox(height: 4),
@@ -550,7 +570,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                 subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey.shade600,
+                  color: isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600,
                 ),
               ),
             ],
@@ -568,7 +588,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     );
   }
 
-  Widget _buildDiseaseThreatCards(BuildContext context, StatisticsProvider provider) {
+  Widget _buildDiseaseThreatCards(BuildContext context, StatisticsProvider provider, bool isDarkMode) {
     if (provider.diseaseStats.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -639,7 +659,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: soilDark,
+                                  color: isDarkMode ? Colors.white : soilDark,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -717,7 +737,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     );
   }
 
-  Widget _buildHealthTrendChart(BuildContext context, StatisticsProvider provider) {
+  Widget _buildHealthTrendChart(BuildContext context, StatisticsProvider provider, bool isDarkMode) {
     if (provider.timelineData.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -886,7 +906,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     );
   }
 
-  Widget _buildSmartInsights(BuildContext context, StatisticsProvider provider) {
+  Widget _buildSmartInsights(BuildContext context, StatisticsProvider provider, bool isDarkMode) {
     final summary = provider.summary;
     final healthyPercentage =
         double.tryParse(summary['healthy_percentage']?.toString() ?? '0') ?? 0;
@@ -1044,7 +1064,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, StatisticsProvider provider) {
+  Widget _buildActionButtons(BuildContext context, StatisticsProvider provider, bool isDarkMode) {
     return Column(
       children: [
         Container(
