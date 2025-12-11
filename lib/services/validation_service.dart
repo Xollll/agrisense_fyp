@@ -1,4 +1,3 @@
-// lib/services/validation_service.dart
 /// Centralized validation service for all API responses and data integrity
 /// Ensures app stability by validating data before use
 class ValidationService {
@@ -6,8 +5,6 @@ class ValidationService {
   // CONFIDENCE SCORE VALIDATION (0.0 - 1.0)
   // ============================================================
 
-  /// Validates that confidence is within valid range [0.0, 1.0]
-  /// Returns true if valid, false otherwise
   static bool isValidConfidence(dynamic confidence) {
     if (confidence == null) return false;
 
@@ -18,15 +15,12 @@ class ValidationService {
 
       if (score == null) return false;
 
-      // Must be between 0.0 and 1.0
       return score >= 0.0 && score <= 1.0;
     } catch (e) {
       return false;
     }
   }
 
-  /// Clamps confidence to valid range [0.0, 1.0]
-  /// Useful for automatic correction
   static double clampConfidence(dynamic confidence) {
     try {
       final score = confidence is double
@@ -43,63 +37,57 @@ class ValidationService {
   // DISEASE LABEL VALIDATION
   // ============================================================
 
-  /// Valid disease categories based on the ML model
-  static const List<String> validDiseaseLabels = [
-    'healthy',
-    'leaf spot',
-    'early blight',
-    'late blight',
-    'powdery mildew',
-    'bacterial wilt',
-    'anthracnose',
-    'leaf curl',
-    'yellow leaf',
-    'rust',
-    'septoria',
+  /// Accepted YOLO disease labels
+  static const List<String> acceptedLabels = [
+    'Healthy',
+    'Leaf Curl',
+    'Leaf Spot',
+    'Yellow Mosaic',
   ];
 
-  /// Validates disease label exists in model output
-  static bool isValidLabel(String? label) {
-    if (label == null || label.isEmpty) return false;
-
-    final normalized = label.toLowerCase().trim();
-
-    // Exact match
-    if (validDiseaseLabels.contains(normalized)) return true;
-
-    // Partial match (in case of variations)
-    return validDiseaseLabels.any(
-      (disease) =>
-          normalized.contains(disease) || disease.contains(normalized),
-    );
-  }
-
-  /// Normalizes disease label to standard format
+  /// Normalizes a label to match acceptedLabels
   static String normalizeLabel(String? label) {
     if (label == null || label.isEmpty) return 'unknown';
 
-    final normalized = label.toLowerCase().trim();
+    // Normalize YOLO-style labels (lowercase, remove underscores/hyphens, trim)
+    final normalized = label
+        .toLowerCase()
+        .replaceAll('_', ' ')
+        .replaceAll('-', ' ')
+        .trim();
 
-    // Return exact match if found
-    for (var disease in validDiseaseLabels) {
-      if (normalized == disease) return disease;
-    }
-
-    // Return closest match
-    for (var disease in validDiseaseLabels) {
-      if (normalized.contains(disease) || disease.contains(normalized)) {
-        return disease;
+    // Fuzzy match: check if normalized contains any accepted label
+    for (var valid in acceptedLabels) {
+      final validNormalized = valid.toLowerCase();
+      if (normalized == validNormalized || normalized.contains(validNormalized)) {
+        return valid; // Return standard format
       }
     }
 
-    return 'unknown';
+    // If no exact match, attempt minor typo correction
+    for (var valid in acceptedLabels) {
+      final validNormalized = valid.toLowerCase().replaceAll(' ', '');
+      final candidate = normalized.replaceAll(' ', '');
+      if (candidate.contains(validNormalized) || validNormalized.contains(candidate)) {
+        return valid;
+      }
+    }
+
+    // Otherwise, return the normalized label directly (prevents unknown)
+    return normalized;
+  }
+
+  static bool isValidLabel(String? label) {
+    if (label == null || label.isEmpty) return false;
+
+    final normalized = normalizeLabel(label);
+    return normalized.isNotEmpty;
   }
 
   // ============================================================
   // TIMESTAMP VALIDATION
   // ============================================================
 
-  /// Validates timestamp is in ISO 8601 format
   static bool isValidTimestamp(String? timestamp) {
     if (timestamp == null || timestamp.isEmpty) return false;
 
@@ -111,8 +99,6 @@ class ValidationService {
     }
   }
 
-  /// Parses and validates timestamp
-  /// Returns parsed DateTime or current time if invalid
   static DateTime parseTimestamp(dynamic timestamp) {
     if (timestamp == null) return DateTime.now();
 
@@ -130,17 +116,14 @@ class ValidationService {
   // API RESPONSE VALIDATION
   // ============================================================
 
-  /// Validates complete detection response from server
-  /// Returns map with validation result and corrected data
   static Map<String, dynamic> validateDetectionResponse(
       Map<String, dynamic> response) {
     return {
       'isValid': true,
-      'label': isValidLabel(response['label'])
-          ? normalizeLabel(response['label'])
-          : 'unknown',
-      'confidence':
-          isValidConfidence(response['confidence']) ? response['confidence'] : 0.0,
+      'label': normalizeLabel(response['label']),
+      'confidence': isValidConfidence(response['confidence'])
+          ? response['confidence']
+          : 0.0,
       'timestamp': isValidTimestamp(response['timestamp'])
           ? response['timestamp']
           : DateTime.now().toIso8601String(),
@@ -148,7 +131,6 @@ class ValidationService {
     };
   }
 
-  /// Collects all validation errors from response
   static List<String> _collectErrors(Map<String, dynamic> response) {
     final errors = <String>[];
 
@@ -169,30 +151,26 @@ class ValidationService {
   // GEMINI RESPONSE VALIDATION
   // ============================================================
 
-  /// Validates AI recommendation is not empty or malformed
   static bool isValidAIResponse(String? response) {
     if (response == null) return false;
     if (response.isEmpty) return false;
-    if (response.length < 10) return false; // Too short
+    if (response.length < 10) return false;
     if (response.contains('Error') && response.contains('500')) return false;
 
     return true;
   }
 
-  /// Sanitizes AI response for display
   static String sanitizeAIResponse(String? response) {
     if (!isValidAIResponse(response)) {
       return "Unable to generate recommendation. Please try again.";
     }
 
-    // Remove common prefixes
     var cleaned = response!
         .replaceAll('You are an agricultural', '')
         .replaceAll('As an AI assistant', '')
         .replaceAll('Here are the', '')
         .trim();
 
-    // Remove if too long (API sometimes returns massive responses)
     if (cleaned.length > 500) {
       cleaned = cleaned.substring(0, 500) + '...';
     }
@@ -204,7 +182,6 @@ class ValidationService {
   // HISTORY DATA VALIDATION
   // ============================================================
 
-  /// Validates history record from Supabase
   static bool isValidHistoryRecord(Map<String, dynamic> record) {
     return record.containsKey('id') &&
         isValidLabel(record['label']) &&
@@ -212,7 +189,6 @@ class ValidationService {
         record.containsKey('solution');
   }
 
-  /// Filters and validates history list
   static List<Map<String, dynamic>> validateHistoryList(
       List<Map<String, dynamic>> records) {
     return records.where((record) => isValidHistoryRecord(record)).toList();
