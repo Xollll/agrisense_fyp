@@ -3,6 +3,83 @@ import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
 import '../widgets/enhanced_app_bar.dart';
 
+// ============================================================
+// SEVERITY CLASSIFICATION ENUM & LOGIC
+// ============================================================
+
+enum SeverityType { healthy, low, warning, critical }
+
+/// Classifies detection severity based on BOTH label AND confidence
+/// 
+/// Rules:
+/// - If label is "healthy" → Always HEALTHY (green)
+/// - If disease detected:
+///   - confidence >= 0.80 → CRITICAL (red)
+///   - confidence 0.50-0.79 → WARNING (yellow)
+///   - confidence < 0.50 → LOW (green)
+SeverityType classifySeverity(String label, double confidence) {
+  final normalized = label.toLowerCase().trim();
+
+  // Healthy should ALWAYS be healthy severity, regardless of confidence
+  if (normalized == 'healthy' || normalized == 'normal' || normalized == 'good') {
+    return SeverityType.healthy;
+  }
+
+  // Disease severity based on confidence
+  if (confidence >= 0.80) return SeverityType.critical;
+  if (confidence >= 0.50) return SeverityType.warning;
+  
+  return SeverityType.low;
+}
+
+/// Returns color for severity badge
+Color _getSeverityColor(SeverityType severity) {
+  switch (severity) {
+    case SeverityType.healthy:
+      return const Color(0xFF10B981); // Green
+    case SeverityType.low:
+      return const Color(0xFF10B981); // Green
+    case SeverityType.warning:
+      return const Color(0xFFF59E0B); // Yellow/Amber
+    case SeverityType.critical:
+      return const Color(0xFFDC2626); // Red
+  }
+}
+
+/// Returns text label for severity badge
+String _getSeverityLabel(SeverityType severity) {
+  switch (severity) {
+    case SeverityType.healthy:
+      return 'Healthy';
+    case SeverityType.low:
+      return 'Low Risk';
+    case SeverityType.warning:
+      return 'Warning';
+    case SeverityType.critical:
+      return 'Critical';
+  }
+}
+
+/// Returns a user-friendly story based on label and severity
+String _getSeverityStory(String label, SeverityType severity) {
+  final normalizedLabel = label.toLowerCase().trim();
+  
+  if (normalizedLabel == 'healthy' || normalizedLabel == 'normal' || normalizedLabel == 'good') {
+    return 'Your plant looks healthy. No action needed.';
+  }
+  
+  switch (severity) {
+    case SeverityType.healthy:
+      return 'Your plant looks healthy. No action needed.';
+    case SeverityType.critical:
+      return 'Severe disease detected. Immediate action recommended.';
+    case SeverityType.warning:
+      return 'Early symptoms detected. Monitor closely.';
+    case SeverityType.low:
+      return 'Minor symptoms detected. Monitor casually.';
+  }
+}
+
 /// Returns the DIAGNOSIS CONFIDENCE color (how sure the model is)
 Color _getDiagnosisConfidenceColor(double confidence) {
   if (confidence >= 0.8) return const Color(0xFF06B6D4); // Strong confidence
@@ -77,17 +154,18 @@ class _HistoryPageState extends State<HistoryPage> {
   List<Map<String, dynamic>> _filterDetections(List<Map<String, dynamic>> items) {
     var filtered = items.toList();
     
-    // Apply filter
+    // Apply filter based on severity
     if (_selectedFilter != 'All') {
       filtered = filtered.where((item) {
+        final label = (item['label'] ?? '').toString();
         final confidence = (item['confidence'] is num)
             ? (item['confidence'] as num).toDouble()
             : double.tryParse('${item['confidence']}') ?? 0.0;
         
-        if (_selectedFilter == 'Healthy') return confidence >= 0.75;
-        if (_selectedFilter == 'Warning') return confidence >= 0.5 && confidence < 0.75;
-        if (_selectedFilter == 'Critical') return confidence < 0.5;
-        return false;
+        final severity = classifySeverity(label, confidence);
+        final severityLabel = _getSeverityLabel(severity);
+        
+        return _selectedFilter == severityLabel;
       }).toList();
     }
     
@@ -370,7 +448,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
-                            children: ['All', 'Healthy', 'Warning', 'Critical']
+                            children: ['All', 'Healthy', 'Low Risk', 'Warning', 'Critical']
                                 .map((filter) {
                               final isSelected = _selectedFilter == filter;
                               return Padding(
@@ -590,13 +668,29 @@ class _DetectionCard extends StatelessWidget {
     required this.solution,
   });
 
+  /// Extract first 2-3 lines of recommendation
+  String _getTruncatedSolution(String fullSolution, {int lines = 3}) {
+    if (fullSolution.isEmpty) return '';
+    final solLines = fullSolution.split('\n');
+    final truncated = solLines.take(lines).join('\n');
+    if (solLines.length > lines) {
+      return truncated + '...';
+    }
+    return truncated;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final healthStatusColor = _getHealthStatusColor(label);
-    final healthStatus = _getHealthStatusLabel(label);
+    // Classify severity based on both label AND confidence
+    final severity = classifySeverity(label, confidence);
+    final severityColor = _getSeverityColor(severity);
+    final severityLabel = _getSeverityLabel(severity);
+    final storyText = _getSeverityStory(label, severity);
+    
     final diagnosisConfidenceColor = _getDiagnosisConfidenceColor(confidence);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final formattedDate = timestamp.contains("T") ? timestamp.split("T").first : timestamp;
+    final truncatedSolution = _getTruncatedSolution(solution);
 
     return GestureDetector(
       onTap: () => _showDetailsModal(context),
@@ -623,20 +717,10 @@ class _DetectionCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header: Disease name + Health Status badge
+                // Header: Title + Date + Severity Badge
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Color dot indicator (Health Status)
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: healthStatusColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -659,27 +743,44 @@ class _DetectionCard extends StatelessWidget {
                         ],
                       ),
                     ),
+                    // Severity Badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: healthStatusColor.withOpacity(0.1),
+                        color: severityColor.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: severityColor.withOpacity(0.4),
+                          width: 1,
+                        ),
                       ),
                       child: Text(
-                        healthStatus,
+                        severityLabel,
                         style: TextStyle(
-                          color: healthStatusColor,
+                          color: severityColor,
                           fontWeight: FontWeight.w700,
-                          fontSize: 11,
+                          fontSize: 12,
                         ),
                       ),
                     ),
                   ],
                 ),
                 
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
 
-                // Diagnosis Confidence bar (how sure the model is)
+                // Story Text
+                Text(
+                  storyText,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+                        fontSize: 13,
+                        height: 1.4,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Diagnosis Confidence bar
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -714,33 +815,45 @@ class _DetectionCard extends StatelessWidget {
                         valueColor: AlwaysStoppedAnimation<Color>(diagnosisConfidenceColor),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'How confident the AI is in this diagnosis',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            fontSize: 10,
-                            color: Colors.grey.shade500,
-                            fontStyle: FontStyle.italic,
-                          ),
-                    ),
                   ],
                 ),
 
-                // Solution preview
-                if (solution.isNotEmpty) ...[
+                // Truncated recommendation preview (if available)
+                if (truncatedSolution.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Text(
-                    solution.length > 100
-                        ? solution.substring(0, 100) + '...'
-                        : solution,
-                    maxLines: 2,
+                    'Recommended Action',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    truncatedSolution,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade700,
+                          color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
                           fontSize: 12,
                           height: 1.5,
                         ),
                   ),
+                  if (solution.split('\n').length > 3) ...[
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: () => _showFullRecommendationModal(context),
+                      child: Text(
+                        'View Full Recommendation',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Theme.of(context).primaryColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                      ),
+                    ),
+                  ],
                 ],
 
                 const SizedBox(height: 8),
@@ -772,7 +885,94 @@ class _DetectionCard extends StatelessWidget {
     );
   }
 
+  void _showFullRecommendationModal(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: isDarkMode ? Colors.grey.shade900 : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 20,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Full Recommendation',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          size: 20,
+                          color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Full recommendation text
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200,
+                    ),
+                  ),
+                  child: Text(
+                    solution.isEmpty ? 'No recommendation available' : solution,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          height: 1.8,
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showDetailsModal(BuildContext context) {
+    final severity = classifySeverity(label, confidence);
+    final severityColor = _getSeverityColor(severity);
+    final severityLabel = _getSeverityLabel(severity);
+    final storyText = _getSeverityStory(label, severity);
+    
     final healthStatusColor = _getHealthStatusColor(label);
     final healthStatus = _getHealthStatusLabel(label);
     final diagnosisConfidenceColor = _getDiagnosisConfidenceColor(confidence);
@@ -833,14 +1033,14 @@ class _DetectionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // Header
+                // Header with Severity indicator
                 Row(
                   children: [
                     Container(
                       width: 14,
                       height: 14,
                       decoration: BoxDecoration(
-                        color: healthStatusColor,
+                        color: severityColor,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -868,19 +1068,31 @@ class _DetectionCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: healthStatusColor.withOpacity(0.1),
+                        color: severityColor.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        healthStatus,
+                        severityLabel,
                         style: TextStyle(
-                          color: healthStatusColor,
+                          color: severityColor,
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
                         ),
                       ),
                     ),
                   ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Story Text
+                Text(
+                  storyText,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
                 ),
 
                 const SizedBox(height: 24),
@@ -997,9 +1209,9 @@ class _DetectionCard extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // Solution section
+                // Recommendation section
                 Text(
-                  'Recommended Solution',
+                  'Recommended Action',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -1015,7 +1227,7 @@ class _DetectionCard extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    solution.isEmpty ? 'No solution available' : solution,
+                    solution.isEmpty ? 'No recommendation available' : solution,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           height: 1.6,
                           fontWeight: FontWeight.w500,
@@ -1052,6 +1264,13 @@ class _DetectionCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       _buildDetailRow('Status', healthStatus, isDarkMode),
+                      const SizedBox(height: 12),
+                      Divider(
+                        height: 1,
+                        color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildDetailRow('Severity', severityLabel, isDarkMode),
                       const SizedBox(height: 12),
                       Divider(
                         height: 1,
