@@ -125,13 +125,11 @@ class DetectionService {
         
         print('📥 Raw response: $decoded');
 
-        // Check for no_data status
-        if (decoded["status"] == "no_data" || 
-            (decoded["status"] == "no detection found") ||
-            (decoded["detection"] == null)) {
-          print('ℹ️ No detection data available');
-          return [];
-        }
+        if (decoded["status"] != "ok") {
+  print('ℹ️ No detection data available');
+  return [];
+}
+
 
         // Extract raw values using flexible field names
         final rawLabel = _extractLabel(decoded);
