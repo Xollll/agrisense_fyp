@@ -142,8 +142,6 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
             const SizedBox(height: 24),
             _buildHealthTrendsAndForecast(context, provider, isDarkMode),
             const SizedBox(height: 24),
-            _buildTimeRangeFilter(context, isDarkMode),
-            const SizedBox(height: 24),
             _buildQuickStats(context, provider, isDarkMode),
             const SizedBox(height: 24),
             _buildDiseaseThreatCards(context, provider, isDarkMode),
@@ -658,18 +656,6 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     );
   }
 
-  Widget _buildTimeRangeFilter(BuildContext context, bool isDarkMode) {
-    return Row(
-      children: [
-        _buildModernFilterChip('All Time', 0, Icons.all_inclusive),
-        const SizedBox(width: 12),
-        _buildModernFilterChip('30 Days', 1, Icons.calendar_month),
-        const SizedBox(width: 12),
-        _buildModernFilterChip('7 Days', 2, Icons.calendar_today),
-      ],
-    );
-  }
-
   Widget _buildModernFilterChip(String label, int index, IconData icon) {
     final isSelected = _selectedTimeRange == index;
     return Expanded(
@@ -1045,7 +1031,29 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
       return const SizedBox.shrink();
     }
 
-    final recentData = provider.timelineData.take(7).toList();
+    // Determine days and data based on selected time range
+    int daysToShow;
+    String timeRangeLabel;
+    switch (_selectedTimeRange) {
+      case 0: // All Time
+        daysToShow = provider.timelineData.length;
+        timeRangeLabel = 'All Time';
+        break;
+      case 1: // 30 Days
+        daysToShow = 30;
+        timeRangeLabel = 'Last 30 Days';
+        break;
+      case 2: // 7 Days (default)
+        daysToShow = 7;
+        timeRangeLabel = 'Last 7 Days';
+        break;
+      default:
+        daysToShow = 7;
+        timeRangeLabel = 'Last 7 Days';
+    }
+
+    // Get the filtered data based on selection
+    final recentData = provider.timelineData.take(daysToShow).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1057,6 +1065,17 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
             fontWeight: FontWeight.bold,
             color: soilDark,
           ),
+        ),
+        const SizedBox(height: 16),
+        // Time range filter - directly above the chart
+        Row(
+          children: [
+            _buildModernFilterChip('All Time', 0, Icons.all_inclusive),
+            const SizedBox(width: 12),
+            _buildModernFilterChip('30 Days', 1, Icons.calendar_month),
+            const SizedBox(width: 12),
+            _buildModernFilterChip('7 Days', 2, Icons.calendar_today),
+          ],
         ),
         const SizedBox(height: 16),
         Container(
@@ -1079,13 +1098,39 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Detection Activity (Last 7 Days)',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: soilDark.withOpacity(0.7),
-                ),
+              // Title shows the selected time range
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Detection Activity ($timeRangeLabel)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: soilDark.withOpacity(0.7),
+                    ),
+                  ),
+                  // Show data point count
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: cropGreen.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: cropGreen.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      '${recentData.length} day${recentData.length > 1 ? 's' : ''}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: cropGreen,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -1093,6 +1138,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                 child: _buildAnimatedBarChart(recentData),
               ),
               const SizedBox(height: 16),
+              // Contextual insight message based on time range
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -1105,7 +1151,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Consistent monitoring leads to healthier crops',
+                        _getTimeRangeInsight(timeRangeLabel, recentData.length),
                         style: TextStyle(
                           fontSize: 12,
                           color: soilDark.withOpacity(0.8),
@@ -1113,7 +1159,6 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                         ),
                       ),
                     ),
-                    
                   ],
                 ),
               ),
@@ -1122,6 +1167,24 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
         ),
       ],
     );
+  }
+
+  /// Get contextual insight message based on selected time range
+  String _getTimeRangeInsight(String timeRange, int dataPoints) {
+    if (dataPoints == 0) {
+      return 'No data available for this period - start monitoring to see trends!';
+    }
+    
+    switch (timeRange) {
+      case 'Last 7 Days':
+        return '📅 Viewing last 7 days - great for weekly monitoring and trend spotting';
+      case 'Last 30 Days':
+        return '📅 Viewing last 30 days - perfect for monthly health assessment and progress tracking';
+      case 'All Time':
+        return '📅 Viewing all history - see complete farm health evolution over time';
+      default:
+        return 'Consistent monitoring leads to healthier crops';
+    }
   }
 
   Widget _buildAnimatedBarChart(List<dynamic> data) {
