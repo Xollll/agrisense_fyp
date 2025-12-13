@@ -140,6 +140,8 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           children: [
             _buildHealthHeroCard(context, provider, isDarkMode),
             const SizedBox(height: 24),
+            _buildHealthTrendsAndForecast(context, provider, isDarkMode),
+            const SizedBox(height: 24),
             _buildTimeRangeFilter(context, isDarkMode),
             const SizedBox(height: 24),
             _buildQuickStats(context, provider, isDarkMode),
@@ -378,6 +380,260 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     );
   }
 
+  Widget _buildHealthTrendsAndForecast(BuildContext context, StatisticsProvider provider, bool isDarkMode) {
+    final summary = provider.summary;
+    final currentHealth = double.tryParse(summary['healthy_percentage']?.toString() ?? '0') ?? 0;
+    final previousHealth = double.tryParse(summary['previous_month_health']?.toString() ?? '0') ?? currentHealth;
+    
+    // Calculate month-over-month change
+    final healthChange = currentHealth - previousHealth;
+    final healthChangePercent = previousHealth > 0 ? (healthChange / previousHealth * 100) : 0;
+    final isHealthImproving = healthChange >= 0;
+    
+    // Calculate disease progression forecast
+    String forecastText = '';
+    String forecastEmoji = '📊';
+    Color forecastColor = Colors.grey;
+    
+    if (provider.diseaseStats.isNotEmpty) {
+      final topDisease = provider.diseaseStats.first;
+      final daysToProject = 14; // Project 2 weeks ahead
+      
+      // Calculate detection trend (simple linear projection)
+      double projectedPercentage = topDisease.percentage;
+      
+      if (provider.timelineData.isNotEmpty && provider.timelineData.length >= 2) {
+        final recent = provider.timelineData.first.count as int? ?? 0;
+        final previous = provider.timelineData.length > 1 
+            ? (provider.timelineData[1].count as int? ?? 0)
+            : recent;
+        
+        if (previous > 0 && recent > 0) {
+          final dailyChange = (recent - previous) / 1.0;
+          projectedPercentage = (topDisease.percentage + (dailyChange * daysToProject)).clamp(0, 100);
+        }
+      }
+      
+      // Generate forecast message
+      if (projectedPercentage > 80) {
+        forecastEmoji = '🚨';
+        forecastColor = Colors.red.shade600;
+        forecastText = 'CRITICAL: ${topDisease.disease} could peak above 80% in 2 weeks - immediate action required';
+      } else if (projectedPercentage > 60) {
+        forecastEmoji = '⚠️';
+        forecastColor = Colors.orange.shade600;
+        forecastText = '${topDisease.disease} may reach ${projectedPercentage.toStringAsFixed(0)}% in 2 weeks - monitor closely';
+      } else if (projectedPercentage > topDisease.percentage + 10) {
+        forecastEmoji = '📈';
+        forecastColor = sunYellow;
+        forecastText = '${topDisease.disease} trend is upward - preventive action recommended';
+      } else if (projectedPercentage < topDisease.percentage - 10) {
+        forecastEmoji = '✅';
+        forecastColor = leafGreen;
+        forecastText = '${topDisease.disease} trending downward - treatments appear to be working!';
+      } else {
+        forecastEmoji = '📊';
+        forecastColor = cropGreen;
+        forecastText = '${topDisease.disease} stable - maintain current monitoring';
+      }
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '📊 Health Trends & Forecast',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: soilDark,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            // Month-over-Month Card
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isHealthImproving 
+                      ? leafGreen.withOpacity(0.15)
+                      : Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isHealthImproving 
+                        ? leafGreen.withOpacity(0.3)
+                        : Colors.orange.shade300,
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isHealthImproving ? leafGreen : Colors.orange).withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Month-over-Month',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: soilDark.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          isHealthImproving ? '📈' : '📉',
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${isHealthImproving ? '+' : ''}${healthChangePercent.toStringAsFixed(1)}%',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: isHealthImproving 
+                                    ? leafGreen 
+                                    : Colors.orange.shade600,
+                              ),
+                            ),
+                            Text(
+                              isHealthImproving 
+                                  ? 'Improving' 
+                                  : 'Declining',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: soilDark.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        isHealthImproving 
+                            ? '✨ Great progress!'
+                            : '⚠️ Needs attention',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: soilDark,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // 2-Week Forecast Card
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: forecastColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: forecastColor.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: forecastColor.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '14-Day Forecast',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: soilDark.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      forecastEmoji,
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Disease Outlook',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: forecastColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Forecast Detail
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: forecastColor.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: forecastColor.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: forecastColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(forecastEmoji, style: const TextStyle(fontSize: 20)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  forecastText,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: soilDark,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildQuickStat(String emoji, String value, String label) {
     return Column(
       children: [
@@ -593,11 +849,13 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
       return const SizedBox.shrink();
     }
 
+    // Show top diseases by confidence risk (not list format like History)
+    // This is different from History page which shows individual detections
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '⚠️ Threat Assessment',
+          '⚠️ Risk Ranking',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -605,133 +863,178 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           ),
         ),
         const SizedBox(height: 8),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: provider.diseaseStats.length > 5 ? 5 : provider.diseaseStats.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final disease = provider.diseaseStats[index];
-            final threatColor = _getThreatColor(disease.percentage);
+        Text(
+          'Diseases ranked by detection frequency and confidence level',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey.shade600,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.5),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: List.generate(
+              provider.diseaseStats.length > 5 ? 5 : provider.diseaseStats.length,
+              (index) {
+                final disease = provider.diseaseStats[index];
+                final threatColor = _getThreatColor(disease.percentage);
+                final riskRank = index + 1;
 
-            return TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: Duration(milliseconds: 400 + (index * 100)),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, child) {
-                return Transform.translate(
-                  offset: Offset(0, 20 * (1 - value)),
-                  child: Opacity(
-                    opacity: value,
-                    child: child,
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: Duration(milliseconds: 400 + (index * 100)),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: child,
+                    );
+                  },
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.only(
+                          bottom: index < (provider.diseaseStats.length > 5 ? 4 : provider.diseaseStats.length - 1) ? 12 : 0,
+                        ),
+                        child: Row(
+                          children: [
+                            // Rank badge
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [threatColor, threatColor.withOpacity(0.8)],
+                                ),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: threatColor.withOpacity(0.3),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '#$riskRank',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Disease name and risk
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    disease.disease,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDarkMode ? Colors.white : soilDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _getThreatLabel(disease.percentage),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: threatColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Percentage indicator
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    threatColor.withOpacity(0.2),
+                                    threatColor.withOpacity(0.1),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: threatColor.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Text(
+                                '${disease.percentage.toStringAsFixed(0)}%',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: threatColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (index < (provider.diseaseStats.length > 5 ? 4 : provider.diseaseStats.length - 1))
+                        Divider(
+                          height: 12,
+                          color: Colors.grey.shade200,
+                        ),
+                    ],
                   ),
                 );
               },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: threatColor.withOpacity(0.3),
-                    width: 1.5,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blue.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.blue.shade700, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '💡 For detailed history of individual detections, visit the History page',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.blue.shade800,
+                    fontWeight: FontWeight.w500,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: threatColor.withOpacity(0.1),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                disease.disease,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDarkMode ? Colors.white : soilDark,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _getThreatLabel(disease.percentage),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: threatColor,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                threatColor.withOpacity(0.2),
-                                threatColor.withOpacity(0.1),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: threatColor.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Text(
-                            '${disease.percentage.toStringAsFixed(1)}%',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: threatColor,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: disease.percentage / 100),
-                      duration: const Duration(milliseconds: 1000),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, value, child) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: LinearProgressIndicator(
-                            value: value,
-                            minHeight: 8,
-                            backgroundColor: Colors.grey.shade200,
-                            valueColor: AlwaysStoppedAnimation<Color>(threatColor),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${disease.count} detection${disease.count != 1 ? 's' : ''} • Last: ${_formatDate(disease.lastDetected)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
                 ),
               ),
-            );
-          },
+            ],
+          ),
         ),
       ],
     );
@@ -810,6 +1113,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                         ),
                       ),
                     ),
+                    
                   ],
                 ),
               ),
@@ -913,47 +1217,123 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
 
     List<Map<String, dynamic>> insights = [];
 
+    // ============================================================
+    // INSIGHT 1: Overall Farm Health Status
+    // ============================================================
     if (healthyPercentage >= 80) {
       insights.add({
         'emoji': '✅',
-        'text': 'Maintain current care practices',
+        'text': 'Excellent farm health - keep maintaining your current practices',
         'color': leafGreen,
-      });
-      insights.add({
-        'emoji': '📋',
-        'text': 'Continue regular monitoring',
-        'color': cropGreen,
       });
     } else if (healthyPercentage >= 60) {
       insights.add({
         'emoji': '⚠️',
-        'text': 'Increase monitoring frequency',
+        'text': 'Moderate health - increase monitoring to catch issues early',
         'color': sunYellow,
-      });
-      insights.add({
-        'emoji': '🧪',
-        'text': 'Consider preventive treatments',
-        'color': Colors.orange,
       });
     } else {
       insights.add({
         'emoji': '🚨',
-        'text': 'Urgent action recommended',
+        'text': 'Critical health - urgent intervention needed',
         'color': Colors.red.shade600,
-      });
-      insights.add({
-        'emoji': '👨‍🌾',
-        'text': 'Consult agricultural specialist',
-        'color': Colors.red.shade700,
       });
     }
 
+    // ============================================================
+    // INSIGHT 2: Disease Diversity Analysis
+    // ============================================================
+    final diseaseCount = provider.diseaseStats.length;
+    if (diseaseCount >= 5) {
+      insights.add({
+        'emoji': '📊',
+        'text': 'Multiple diseases detected ($diseaseCount types) - prioritize treating top 2-3 diseases',
+        'color': earthBrown,
+      });
+    } else if (diseaseCount >= 3) {
+      insights.add({
+        'emoji': '🌾',
+        'text': 'Several disease types found - focus on prevention to reduce diversity',
+        'color': Colors.orange,
+      });
+    }
+
+    // ============================================================
+    // INSIGHT 3: Top Disease Specific Advice
+    // ============================================================
     if (provider.diseaseStats.isNotEmpty) {
       final top = provider.diseaseStats.first;
+      final topPercentage = top.percentage;
+
+      if (topPercentage > 50) {
+        insights.add({
+          'emoji': '🎯',
+          'text': '${top.disease} is dominant (${topPercentage.toStringAsFixed(0)}%) - prioritize treating this first',
+          'color': Colors.red.shade600,
+        });
+      } else if (topPercentage > 30) {
+        insights.add({
+          'emoji': '�',
+          'text': '${top.disease} is your main concern (${topPercentage.toStringAsFixed(0)}%) - develop treatment plan',
+          'color': Colors.orange.shade600,
+        });
+      } else {
+        insights.add({
+          'emoji': '🔍',
+          'text': '${top.disease} is most common (${topPercentage.toStringAsFixed(0)}%) - monitor closely',
+          'color': sunYellow,
+        });
+      }
+    }
+
+    // ============================================================
+    // INSIGHT 4: Activity Trends
+    // ============================================================
+    if (provider.timelineData.isNotEmpty && provider.timelineData.length >= 2) {
+      final recent = provider.timelineData.first.count as int? ?? 0;
+      final previous = provider.timelineData.length > 1 
+          ? (provider.timelineData[1].count as int? ?? 0)
+          : recent;
+
+      if (recent > 0 && previous > 0) {
+        final percentageChange = ((recent - previous) / previous * 100);
+        
+        if (percentageChange > 20) {
+          insights.add({
+            'emoji': '📈',
+            'text': 'Detection rate increased ${percentageChange.toStringAsFixed(0)}% - boost monitoring frequency',
+            'color': Colors.red.shade600,
+          });
+        } else if (percentageChange < -20) {
+          insights.add({
+            'emoji': '📉',
+            'text': 'Detection rate decreasing ${(percentageChange.abs()).toStringAsFixed(0)}% - treatments working',
+            'color': leafGreen,
+          });
+        }
+      }
+    }
+
+    // ============================================================
+    // INSIGHT 5: General Recommendations Based on Health
+    // ============================================================
+    if (healthyPercentage >= 80) {
       insights.add({
-        'emoji': '🎯',
-        'text': 'Focus on ${top.disease}',
-        'color': earthBrown,
+        'emoji': '📋',
+        'text': 'Continue regular monitoring schedule',
+        'color': cropGreen,
+      });
+    } else if (healthyPercentage >= 60) {
+      insights.add({
+        'emoji': '🧪',
+        'text': 'Consider preventive treatments before issues worsen',
+        'color': Colors.orange,
+      });
+    } else {
+      insights.add({
+        'emoji': '👨‍🌾',
+        'text': 'Consult with agricultural specialist for immediate intervention',
+        'color': Colors.red.shade700,
       });
     }
 
@@ -964,7 +1344,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '💡 Smart Recommendations',
+              '💡 Farm Insights',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -972,7 +1352,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
               ),
             ),
             Tooltip(
-              message: 'AI-generated actionable insights based on your farm\'s current health',
+              message: 'Data-driven insights from your farm\'s detection patterns and health metrics',
               child: Icon(
                 Icons.info_outline,
                 size: 18,
@@ -1310,16 +1690,6 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     if (percentage >= 30) return Colors.orange.shade600;
     if (percentage >= 10) return Colors.amber.shade600;
     return leafGreen;
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date).inDays;
-
-    if (difference == 0) return 'Today';
-    if (difference == 1) return 'Yesterday';
-    if (difference < 7) return '$difference days ago';
-    return '${date.month}/${date.day}/${date.year}';
   }
 
   String _formatDateShort(DateTime date) {
