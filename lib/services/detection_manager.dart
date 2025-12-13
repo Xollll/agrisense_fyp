@@ -1,7 +1,13 @@
 // detection_manager.dart
+// 
+// Integration point between detection and AI recommendation systems
+// ================================================================
+// Uses AIRecommendationService to intelligently trigger AI generation
+// Prevents API quota waste while ensuring timely recommendations
+//
 import 'dart:async';
 import '../detection_service.dart';
-import '../gemini_service.dart';
+import 'ai_recommendation_service.dart';
 import 'supabase_service.dart';
 import 'local_cache_service.dart';
 import 'sync_service.dart';
@@ -67,15 +73,22 @@ class DetectionManager {
         return;
       }
 
-      // 3️⃣ Generate AI recommendation
-      final solution = await GeminiService.generateGeminiRecommendation(detection);
+      // 3️⃣ Use smart AI recommendation service
+      // This will only trigger AI if:
+      // - New disease detected (not confidence-only changes)
+      // - Confidence >= 0.5
+      // - Outside cooldown period (default: 10 minutes)
+      final solution = await AIRecommendationService.processDetectionForAI(detection);
 
-      // 🔔 Show notifications
+      // If AI was skipped (solution is null), try to use cached recommendation
+      final finalSolution = solution ?? AIRecommendationService.getCachedRecommendation(detection.label) ?? '';
+
+      // 🔔 Show notifications (always, regardless of AI trigger)
       final notificationService = NotificationService();
       await notificationService.showDiseaseDetectionNotification(
         diseaseName: detection.label,
         confidence: detection.confidence,
-        solution: solution,
+        solution: finalSolution,
       );
 
       // Add to notification provider for in-app display
@@ -83,14 +96,14 @@ class DetectionManager {
         await _notificationProvider!.addNotification(
           disease: detection.label,
           confidence: detection.confidence,
-          solution: solution,
+          solution: finalSolution,
         );
       }
 
-      if (solution.isNotEmpty) {
+      if (finalSolution.isNotEmpty) {
         await notificationService.showRecommendationNotification(
           diseaseName: detection.label,
-          recommendation: solution,
+          recommendation: finalSolution,
         );
       }
 
@@ -98,7 +111,7 @@ class DetectionManager {
       await LocalCacheService.cacheDetection(
         label: detection.label,
         confidence: detection.confidence,
-        solution: solution,
+        solution: finalSolution,
         timestamp: detection.time ?? DateTime.now().toIso8601String(),
       );
 
@@ -107,7 +120,7 @@ class DetectionManager {
         final success = await _supabase.saveDetection(
           label: detection.label,
           confidence: detection.confidence,
-          solution: solution,
+          solution: finalSolution,
           timestamp: detection.time,
         );
         print('Detection ${success ? 'saved to cloud' : 'save failed'}');
@@ -117,7 +130,7 @@ class DetectionManager {
         await LocalCacheService.addToSyncQueue(
           label: detection.label,
           confidence: detection.confidence,
-          solution: solution,
+          solution: finalSolution,
         );
       }
 
