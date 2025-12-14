@@ -15,6 +15,15 @@ class GeminiService {
   // Track last processed disease combination for auto-detection
   static String? _lastCacheKey;
 
+  // ✅ ANTI-REDUNDANCY: Track in-flight requests to prevent duplicate API calls
+  // If same cache key already being fetched, return existing future instead of making new request
+  static final Map<String, Future<String>> _pendingRequests = {};
+
+  // ✅ RATE LIMITING: Prevent same disease from requesting too frequently
+  // Minimum interval between API calls for same disease
+  static const Duration _minRequestInterval = Duration(minutes: 5);
+  static final Map<String, DateTime> _lastRequestTime = {};
+
   // Single detection (kept for backward compatibility)
   static Future<String> generateGeminiRecommendation(
       NormalizedDetection detection) async {
@@ -77,6 +86,29 @@ class GeminiService {
       final smartCacheKey =
           _buildSmartCacheKey(uniqueDiseases, highestConfidence);
 
+      // ✅ ANTI-REDUNDANCY: Check if request is already in-flight
+      // If same cache key is being fetched, return existing future
+      // This prevents duplicate API calls when multiple widgets request simultaneously
+      if (_pendingRequests.containsKey(smartCacheKey)) {
+        print("⏳ Request already in-flight for [$smartCacheKey], waiting for result...");
+        return _pendingRequests[smartCacheKey]!;
+      }
+
+      // ✅ RATE LIMITING: Check if we're making requests too frequently for same disease
+      // Minimum interval is 5 minutes between API calls for same disease combination
+      if (!forceRefresh && _lastRequestTime.containsKey(smartCacheKey)) {
+        final timeSinceLastRequest = DateTime.now().difference(_lastRequestTime[smartCacheKey]!);
+        if (timeSinceLastRequest < _minRequestInterval) {
+          // Within cooldown period - return cached result if available
+          if (_recommendationCache.containsKey(smartCacheKey)) {
+            print("✓ Cache HIT (Rate Limited): Using cached recommendation for [$smartCacheKey]");
+            print("   Time since last request: ${timeSinceLastRequest.inSeconds}s (min: ${_minRequestInterval.inSeconds}s)");
+            _lastCacheKey = smartCacheKey;
+            return _recommendationCache[smartCacheKey]!;
+          }
+        }
+      }
+
       // Determine if we should use cache or generate fresh recommendation
       bool shouldGenerateFresh = forceRefresh || // User explicitly requested refresh
           smartCacheKey != _lastCacheKey || // Disease/confidence changed
@@ -92,7 +124,7 @@ class GeminiService {
       }
 
       // Cache MISS or FORCE REFRESH: Generate fresh recommendation
-      print("⚠ Cache MISS or FORCE REFRESH: Generating new recommendation");
+      print("🌐 Cache MISS or FORCE REFRESH: Making Gemini API call");
       print("   Current key: $smartCacheKey");
       print("   Last key: $_lastCacheKey");
 
@@ -117,26 +149,14 @@ class GeminiService {
 Detections found:
 $diseaseList
 
-Your task:
-1. Combine detection results into UNIQUE disease categories.
-2. Ignore "healthy" detections.
-3. Generate ONE unified recommendation response for all diseases found.
-4. Keep your explanation simple, short, and actionable for small-scale farmers.
+You are an AI assistant for chili farmers. 
 
-Response format:
-
-Detected Issues:
-- List all unique diseases found
-
-Explanation:
-- 1–2 very short sentences describing what these diseases mean
-
-Recommended Actions:
-- Bullet points with clear, practical steps to fix the issues
-- Use simple farming language
-- Focus on affordable solutions small farmers can use
-
-Keep it brief and practical.""";
+Provide a **short and simple recommendation** for the farmer:
+- List the unique diseases
+- Give 1–2 sentence explanation
+- Give 2–3 short, practical steps to fix them
+- Use easy farming language
+- Keep it very brief. """;
 
       final body = jsonEncode(
           {"contents": [
@@ -145,40 +165,63 @@ Keep it brief and practical.""";
             }
           ]});
 
-      // ✅ Use retry service with timeout
-      final response = await HttpRetryService.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: body,
-      ).timeout(NetworkConfig.geminiRequestTimeout);
+      // ✅ Create future for this request and mark it as pending
+      // This prevents duplicate API calls if same request is made again
+      final requestFuture = _makeApiRequest(url, body, smartCacheKey);
+      _pendingRequests[smartCacheKey] = requestFuture;
 
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        final recommendation =
-            json["candidates"][0]["content"]["parts"][0]["text"];
-
-        // ✅ Validate AI response before caching
-        if (!ValidationService.isValidAIResponse(recommendation)) {
-          print('❌ AI response validation failed');
-          return "Unable to generate valid recommendation. Please try again.";
-        }
-
-        final sanitized =
-            ValidationService.sanitizeAIResponse(recommendation);
-
-        // Store validated response in cache for future use
-        _recommendationCache[smartCacheKey] = sanitized;
-        _lastCacheKey = smartCacheKey;
-
-        print("✓ Recommendation cached for key: $smartCacheKey");
-
-        return sanitized;
-      } else {
-        print("Gemini API Error: ${response.body}");
-        return "Error generating recommendation.";
+      try {
+        final result = await requestFuture;
+        // ✅ Update rate limit timer after successful API call
+        _lastRequestTime[smartCacheKey] = DateTime.now();
+        return result;
+      } finally {
+        // ✅ Remove from pending requests once complete
+        _pendingRequests.remove(smartCacheKey);
       }
     } catch (e) {
       print("Gemini Exception: $e");
+      return "Error generating recommendation.";
+    }
+  }
+
+  // ✅ Internal method to make actual API call
+  // Separated from main logic to support deduplication
+  static Future<String> _makeApiRequest(
+    Uri url,
+    String body,
+    String smartCacheKey,
+  ) async {
+    // ✅ Use retry service with timeout
+    final response = await HttpRetryService.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: body,
+    ).timeout(NetworkConfig.geminiRequestTimeout);
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      final recommendation =
+          json["candidates"][0]["content"]["parts"][0]["text"];
+
+      // ✅ Validate AI response before caching
+      if (!ValidationService.isValidAIResponse(recommendation)) {
+        print('❌ AI response validation failed');
+        return "Unable to generate valid recommendation. Please try again.";
+      }
+
+      final sanitized =
+          ValidationService.sanitizeAIResponse(recommendation);
+
+      // Store validated response in cache for future use
+      _recommendationCache[smartCacheKey] = sanitized;
+      _lastCacheKey = smartCacheKey;
+
+      print("✓ Recommendation cached for key: $smartCacheKey");
+
+      return sanitized;
+    } else {
+      print("Gemini API Error: ${response.body}");
       return "Error generating recommendation.";
     }
   }

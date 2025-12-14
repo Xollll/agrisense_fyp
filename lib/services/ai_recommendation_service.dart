@@ -14,7 +14,8 @@
 
 import 'dart:async';
 import '../detection_service.dart';
-import '../gemini_service.dart';
+// ✅ REMOVED: No longer needed since service doesn't call Gemini API
+// import '../gemini_service.dart';
 
 class AIRecommendationTriggerEvent {
   final String disease;
@@ -250,14 +251,37 @@ class AIRecommendationService {
     bool forceRefresh = false,
   }) async {
     try {
-      print('\n📞 Calling Gemini API...');
+      print('\n📞 Disease detected - queuing for AI analysis...');
 
-      // Call Gemini service (passes forceRefresh parameter)
-      final recommendation =
-          await GeminiService.generateGeminiRecommendation(detection);
-
-      // Cache the result
+      // ✅ FIXED: Only AIRecommendationWidget should call Gemini API
+      // This prevents redundant API calls from both widget and service
+      // The widget handles auto-recommendations with proper caching and deduplication
+      // Service layer posts events instead of making API calls
+      
+      // ❌ DISABLED: Removed direct Gemini API call from service
+      // final recommendation = await GeminiService.generateGeminiRecommendation(detection);
+      
+      // ✅ INSTEAD: Return cached recommendation or placeholder
+      // Let the widget layer handle fresh API calls with deduplication
       final diseaseKey = detection.label.toLowerCase();
+      
+      // Check if we have a cached recommendation
+      if (_recommendationCache.containsKey(diseaseKey)) {
+        final cached = _recommendationCache[diseaseKey]!;
+        print('✓ Using cached recommendation for "$diseaseKey"');
+        _recordTriggerEvent(
+          disease: detection.label,
+          confidence: detection.confidence,
+          reason: reason,
+        );
+        return cached.recommendation;
+      }
+      
+      // ✅ No cached recommendation - return generic message
+      // The widget will generate a fresh recommendation when user interacts
+      final recommendation = "Detected: $diseaseKey. Tap 'Get Recommendations' for AI insights.";
+
+      // Cache the result (for future reference)
       _recommendationCache[diseaseKey] = AIRecommendation(
         diseaseLabel: diseaseKey,
         recommendation: recommendation,
@@ -272,17 +296,17 @@ class AIRecommendationService {
       _lastProcessedDisease = diseaseKey;
       _lastProcessedConfidence = detection.confidence;
 
-      print('✅ Recommendation generated and cached for "$diseaseKey"');
+      print('✅ Service queued disease for AI analysis: "$diseaseKey"');
       _recordTriggerEvent(
         disease: detection.label,
         confidence: detection.confidence,
         reason: reason,
       );
-
+      
       return recommendation;
     } catch (e) {
-      print('❌ Error generating recommendation: $e');
-      return 'Unable to generate recommendation at this time. Please try again.';
+      print('❌ Error in _generateAndCacheRecommendation: $e');
+      rethrow;
     }
   }
 
