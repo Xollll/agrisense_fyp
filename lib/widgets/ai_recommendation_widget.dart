@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../detection_service.dart';
 import '../gemini_service.dart';
+import '../services/supabase_service.dart';
 
 // =============================================================
 // AI RECOMMENDATION WIDGET
@@ -76,6 +77,22 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
         forceRefresh: true, // User explicitly asked for tips
       );
 
+      // ✅ OPTION A: Save recommendation to Supabase
+      if (ai.isNotEmpty && widget.lastDetectionPersistent != null) {
+        try {
+          final supabase = SupabaseService();
+          await supabase.saveDetection(
+            label: widget.lastDetectionPersistent!.label,
+            confidence: widget.lastDetectionPersistent!.confidence,
+            solution: ai,
+            timestamp: DateTime.now().toIso8601String(),
+          );
+          print('✅ Recommendation saved to Supabase');
+        } catch (e) {
+          print('⚠️ Failed to save recommendation to Supabase: $e');
+        }
+      }
+
       if (mounted) {
         setState(() {
           _geminiText = ai;
@@ -93,38 +110,6 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
           SnackBar(content: Text("Error getting AI recommendation: $e")),
         );
       }
-    }
-  }
-
-  // Auto-recommendation triggered by detection changes
-  // Called from DashboardPage when detections change
-  Future<void> triggerAutoRecommendation() async {
-    if (widget.lastDetectionPersistent == null) return;
-
-    final detectionsToAnalyze = widget.currentDetections.isNotEmpty
-        ? widget.currentDetections
-        : [widget.lastDetectionPersistent!];
-
-    try {
-      // Auto-triggered = let hybrid system decide (don't force refresh)
-      // System will:
-      // 1. Check if disease/confidence changed significantly
-      // 2. If yes: generate new recommendation (cache miss)
-      // 3. If no: reuse cached recommendation (cache hit)
-      // 4. Update UI silently, no loading spinner
-      final ai = await GeminiService.generateMultipleRecommendation(
-        detectionsToAnalyze,
-        forceRefresh: false, // Auto-triggered, respect cache
-      );
-
-      if (mounted && ai != _geminiText) {
-        setState(() => _geminiText = ai);
-        print(
-            "✓ Auto-recommendation updated: disease/confidence changed");
-      }
-    } catch (e) {
-      print("Auto-recommendation failed: $e");
-      // Don't show error to user for auto-requests
     }
   }
 

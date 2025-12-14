@@ -149,14 +149,11 @@ class GeminiService {
 Detections found:
 $diseaseList
 
-You are an AI assistant for chili farmers. 
-
-Provide a **short and simple recommendation** for the farmer:
-- List the unique diseases
-- Give 1–2 sentence explanation
-- Give 2–3 short, practical steps to fix them
-- Use easy farming language
-- Keep it very brief. """;
+You are an AI assistant for chili farmers.
+List unique detected diseases (ignore healthy).
+Give 1 short explanation sentence.
+Give 2–3 very short, practical farming actions in bullet points.
+Use simple farming language. Keep it brief. """;
 
       final body = jsonEncode(
           {"contents": [

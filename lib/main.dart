@@ -512,11 +512,9 @@ class _DashboardPageState extends State<DashboardPage> {
       }
     });
 
-    // Trigger auto-recommendation update
-    if (mounted) {
-      final state = _aiRecommendationWidgetKey.currentState as dynamic;
-      state?.triggerAutoRecommendation();
-    }
+    // ✅ ANTI-REDUNDANCY: Do NOT auto-trigger recommendations
+    // Only user-triggered actions (button clicks) should call Gemini API
+    // Background polling only updates UI state, no API calls
   }
 
   void _onDiseaseCleared() {
