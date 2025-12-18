@@ -419,7 +419,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Timer? _detectionTimer;
   Timer? _serverCheckTimer;
   bool _isServerOnline = false;
-  String _streamUrl = "${dotenv.env['DETECTION_SERVER_URL'] ?? 'http://192.168.8.6:5000'}/video_feed";
+  String _streamUrl = "${dotenv.env['DETECTION_SERVER_URL'] ?? 'http://172.20.10.2:5000'}/video_feed";
 
   late GlobalKey _aiRecommendationWidgetKey;
 
@@ -446,7 +446,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   /// Check if Flask server is online
   Future<void> _checkServerHealth() async {
-    final baseUrl = dotenv.env['DETECTION_SERVER_URL'] ?? 'http://192.168.8.6:5000';
+    final baseUrl = dotenv.env['DETECTION_SERVER_URL'] ?? 'http://172.20.10.2:5000';
     try {
       final response = await http.head(
         Uri.parse('$baseUrl/health'),
@@ -491,7 +491,7 @@ class _DashboardPageState extends State<DashboardPage> {
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
           setState(() {
-            _streamUrl = "${dotenv.env['DETECTION_SERVER_URL'] ?? 'http://192.168.8.6:5000'}/video_feed";
+            _streamUrl = "${dotenv.env['DETECTION_SERVER_URL'] ?? 'http://172.20.10.2:5000'}/video_feed";
           });
         }
       });
