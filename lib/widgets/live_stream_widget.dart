@@ -125,118 +125,132 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
         ),
         const SizedBox(height: 28),
 
-        // DETECTIONS SECTION HEADER
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: Row(
+        // DETECTIONS SECTION - Card Container with Fixed Layout
+        ModernCard(
+          padding: const EdgeInsets.all(20),
+          borderRadius: 16,
+          shadows: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 4,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                "Current Detections",
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // DETECTIONS LIST
-        widget.detections.isEmpty
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 30),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.check_circle_outline,
-                        size: 48,
-                        color: AppColors.success.withOpacity(0.3),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        "No diseases detected",
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Your plants look healthy!",
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
+              // DETECTIONS SECTION HEADER
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-              )
-            : Column(
-                children: widget.detections
-                    .where((d) => d.label.toLowerCase() != "healthy")
-                    .map(
-                      (d) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
+                  const SizedBox(width: 10),
+                  Text(
+                    "Current Detections",
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // DETECTIONS LIST
+              widget.detections.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 30),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  d.label,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 16,
-                                      ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.warning.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: AppColors.warning.withOpacity(0.3),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    "${(d.confidence * 100).toStringAsFixed(0)}%",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.warning,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            Icon(
+                              Icons.check_circle_outline,
+                              size: 48,
+                              color: AppColors.success.withOpacity(0.3),
                             ),
-                            const SizedBox(height: 8),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: LinearProgressIndicator(
-                                value: d.confidence,
-                                minHeight: 6,
-                                backgroundColor: AppColors.warning.withOpacity(0.15),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColors.warning,
-                                ),
-                              ),
+                            const SizedBox(height: 12),
+                            Text(
+                              "No diseases detected",
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Your plants look healthy!",
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
                         ),
                       ),
                     )
-                    .toList(),
-              ),
+                  : Column(
+                      children: widget.detections
+                          .where((d) => d.label.toLowerCase() != "healthy")
+                          .map(
+                            (d) => Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        d.label,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 16,
+                                            ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.warning.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: AppColors.warning.withOpacity(0.3),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          "${(d.confidence * 100).toStringAsFixed(0)}%",
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.warning,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: LinearProgressIndicator(
+                                      value: d.confidence,
+                                      minHeight: 6,
+                                      backgroundColor: AppColors.warning.withOpacity(0.15),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        AppColors.warning,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+            ],
+          ),
+        ),
       ],
     );
   }
