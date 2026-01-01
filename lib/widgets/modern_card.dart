@@ -79,7 +79,7 @@ class StatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Icon(
@@ -137,10 +137,10 @@ class AlertCard extends StatelessWidget {
 
   Color get _backgroundColor {
     return switch (type) {
-      AlertType.success => AppColors.success.withOpacity(0.1),
-      AlertType.warning => AppColors.warning.withOpacity(0.1),
-      AlertType.error => AppColors.danger.withOpacity(0.1),
-      AlertType.info => AppColors.info.withOpacity(0.1),
+      AlertType.success => AppColors.success.withValues(alpha: 0.1),
+      AlertType.warning => AppColors.warning.withValues(alpha: 0.1),
+      AlertType.error => AppColors.danger.withValues(alpha: 0.1),
+      AlertType.info => AppColors.info.withValues(alpha: 0.1),
     };
   }
 
@@ -170,7 +170,7 @@ class AlertCard extends StatelessWidget {
         color: _backgroundColor,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
-          color: _accentColor.withOpacity(0.3),
+          color: _accentColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),

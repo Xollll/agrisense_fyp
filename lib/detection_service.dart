@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/http_retry_service.dart';
 import 'services/validation_service.dart';
 import 'config/network_config.dart';
+import 'utils/app_log.dart';
 
 class NormalizedDetection {
   final String label;
@@ -38,15 +39,15 @@ class DetectionService {
       if (response.containsKey(fieldName) && response[fieldName] != null) {
         final value = response[fieldName];
         if (value is String && value.isNotEmpty) {
-          print('✅ Found disease label in field "$fieldName": $value');
+          appLog('✅ Found disease label in field "$fieldName": $value');
           return value;
         }
       }
     }
 
     // If no standard field found, log the full response for debugging
-    print('⚠️ Could not find disease label. Response keys: ${response.keys}');
-    print('📋 Full response: $response');
+    appLog('⚠️ Could not find disease label. Response keys: ${response.keys}');
+    appLog('📋 Full response: $response');
     return '';
   }
 
@@ -67,12 +68,10 @@ class DetectionService {
       if (response.containsKey(fieldName) && response[fieldName] != null) {
         try {
           final value = response[fieldName];
-          final score = value is double
-              ? value
-              : double.tryParse(value.toString());
-          
+          final score = value is double ? value : double.tryParse(value.toString());
+
           if (score != null && score >= 0.0 && score <= 1.0) {
-            print('✅ Found confidence in field "$fieldName": $score');
+            appLog('✅ Found confidence in field "$fieldName": $score');
             return score;
           }
         } catch (e) {
@@ -81,7 +80,7 @@ class DetectionService {
       }
     }
 
-    print('⚠️ Could not find valid confidence score');
+    appLog('⚠️ Could not find valid confidence score');
     return 0.0;
   }
 
@@ -111,9 +110,10 @@ class DetectionService {
   static Future<List<NormalizedDetection>> fetchDetections() async {
     try {
       // Get detection server URL from environment variables
-      final serverUrl = dotenv.env['DETECTION_SERVER_URL'] ?? 'http://192.168.8.6:5000';
+      final serverUrl = dotenv.env['DETECTION_SERVER_URL'] ??
+          'http://192.168.8.6:5000';
 
-      print('🔍 Fetching detection from: $serverUrl/latest_detection');
+      appLog('🔍 Fetching detection from: $serverUrl/latest_detection');
 
       // ✅ Use retry service with timeout
       final response = await HttpRetryService.get(
@@ -122,14 +122,13 @@ class DetectionService {
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        
-        print('📥 Raw response: $decoded');
+
+        appLog('📥 Raw response: $decoded');
 
         if (decoded["status"] != "ok") {
-  print('ℹ️ No detection data available');
-  return [];
-}
-
+          appLog('ℹ️ No detection data available');
+          return [];
+        }
 
         // Extract raw values using flexible field names
         final rawLabel = _extractLabel(decoded);
@@ -138,9 +137,9 @@ class DetectionService {
 
         // Handle case where label is empty but confidence exists
         if (rawLabel.isEmpty && rawConfidence > 0.0) {
-          print('⚠️ ISSUE: Confidence detected ($rawConfidence) but label is empty!');
-          print('📋 Response structure: ${decoded.keys}');
-          // Still validate the confidence even with empty label
+          appLog(
+              '⚠️ ISSUE: Confidence detected ($rawConfidence) but label is empty!');
+          appLog('📋 Response structure: ${decoded.keys}');
         }
 
         // ✅ Validate response with extracted values
@@ -149,11 +148,11 @@ class DetectionService {
           'confidence': rawConfidence,
           'timestamp': rawTimestamp,
         };
-        
+
         final validation = ValidationService.validateDetectionResponse(validationInput);
 
         if (validation['errors'].isNotEmpty) {
-          print('⚠️ Validation warnings: ${validation['errors']}');
+          appLog('⚠️ Validation warnings: ${validation['errors']}');
         }
 
         final detection = NormalizedDetection(
@@ -162,14 +161,15 @@ class DetectionService {
           time: validation['timestamp'] ?? "",
         );
 
-        print('✅ Detection processed: Label=${detection.label}, Confidence=${detection.confidence}');
+        appLog(
+            '✅ Detection processed: Label=${detection.label}, Confidence=${detection.confidence}');
         return [detection];
       } else {
-        print('❌ Server error: ${response.statusCode}');
+        appLog('❌ Server error: ${response.statusCode}');
         return [];
       }
     } catch (e) {
-      print("❌ HTTP Fetch Error: $e");
+      appLog('❌ HTTP Fetch Error: $e');
     }
 
     return [];

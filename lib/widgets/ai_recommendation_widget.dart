@@ -37,11 +37,20 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
     super.didUpdateWidget(oldWidget);
 
     // When disease changes, clear old AI text
+    // Only clear if switching between different DISEASES (not when going to/from healthy)
     if (oldWidget.lastDetectionPersistent != null &&
         widget.lastDetectionPersistent != null &&
         oldWidget.lastDetectionPersistent!.label !=
             widget.lastDetectionPersistent!.label) {
-      setState(() => _geminiText = "");
+      final isOldHealthy = _isHealthyLabel(oldWidget.lastDetectionPersistent!.label);
+      final isNewHealthy = _isHealthyLabel(widget.lastDetectionPersistent!.label);
+      
+      // Only clear AI text if BOTH are diseases (different diseases)
+      // Don't clear if switching to/from healthy (preserve AI text)
+      if (!isOldHealthy && !isNewHealthy) {
+        // Both are diseases but different ones - clear old text
+        setState(() => _geminiText = "");
+      }
     }
 
     // When disease is cleared entirely
@@ -49,6 +58,12 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
         widget.lastDetectionPersistent == null) {
       widget.onDiseaseCleared();
     }
+  }
+
+  /// Check if a label represents a healthy plant
+  bool _isHealthyLabel(String label) {
+    final normalizedLabel = label.toLowerCase().trim();
+    return normalizedLabel == 'healthy' || normalizedLabel.contains('healthy');
   }
 
   // User manually requested a fresh recommendation (force refresh)
@@ -115,74 +130,11 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Show healthy plant message if no disease ever detected
-    if (widget.lastDetectionPersistent == null) {
-      return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.green.shade50,
-              Colors.green.shade100,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.green.withOpacity(0.1),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.check_circle,
-                      color: Colors.green.shade600,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    "Plant Status",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                "✅ Your plant looks healthy! No disease detected. Keep up the good care!",
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.6,
-                  color: Colors.green.shade700,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    // Determine the state: no detection, healthy, or disease
+    final hasDetection = widget.lastDetectionPersistent != null;
+    final isHealthy = hasDetection && _isHealthyLabel(widget.lastDetectionPersistent!.label);
+    final isDisease = hasDetection && !isHealthy;
 
-    // Show AI recommendations when disease is detected
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -245,8 +197,12 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
-                            Icons.lightbulb,
-                            color: Colors.orange.shade600,
+                            hasDetection
+                                ? (isHealthy ? Icons.check_circle : Icons.lightbulb)
+                                : Icons.camera_alt,
+                            color: hasDetection
+                                ? (isHealthy ? Colors.green.shade600 : Colors.orange.shade600)
+                                : Colors.grey.shade400,
                             size: 24,
                           ),
                         ),
@@ -254,9 +210,11 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              "Get AI Tips",
-                              style: TextStyle(
+                            Text(
+                              hasDetection
+                                  ? (isHealthy ? "Plant Status" : "Get AI Tips")
+                                  : "Ready to Scan",
+                              style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black87,
@@ -264,13 +222,15 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              widget.currentDetections.isEmpty
+                              hasDetection
                                   ? widget.lastDetectionPersistent!.label
-                                  : "${widget.currentDetections.length} issue${widget.currentDetections.length > 1 ? 's' : ''} found",
+                                  : "Point at a plant",
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.orange.shade700,
+                                color: hasDetection
+                                    ? (isHealthy ? Colors.green.shade700 : Colors.orange.shade700)
+                                    : Colors.grey.shade600,
                               ),
                             ),
                           ],
@@ -284,27 +244,41 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: widget.isCurrentlyDetected
-                            ? Colors.red.shade100
-                            : Colors.grey.shade200,
+                        color: hasDetection
+                            ? (isHealthy
+                                ? Colors.green.shade100
+                                : (widget.isCurrentlyDetected
+                                    ? Colors.red.shade100
+                                    : Colors.grey.shade200))
+                            : Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: widget.isCurrentlyDetected
-                              ? Colors.red.shade400
-                              : Colors.grey.shade400,
+                          color: hasDetection
+                              ? (isHealthy
+                                  ? Colors.green.shade400
+                                  : (widget.isCurrentlyDetected
+                                      ? Colors.red.shade400
+                                      : Colors.grey.shade400))
+                              : Colors.grey.shade300,
                           width: 1,
                         ),
                       ),
                       child: Text(
-                        widget.isCurrentlyDetected
-                            ? "🔴 Active"
-                            : "⏸️ Resolved",
+                        hasDetection
+                            ? (isHealthy
+                                ? "✅ Healthy"
+                                : (widget.isCurrentlyDetected ? "🔴 Active" : "⏸️ Resolved"))
+                            : "👀 Idle",
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: widget.isCurrentlyDetected
-                              ? Colors.red.shade700
-                              : Colors.grey.shade700,
+                          color: hasDetection
+                              ? (isHealthy
+                                  ? Colors.green.shade700
+                                  : (widget.isCurrentlyDetected
+                                      ? Colors.red.shade700
+                                      : Colors.grey.shade700))
+                              : Colors.grey.shade600,
                         ),
                       ),
                     ),
@@ -312,8 +286,42 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
                 ),
                 const SizedBox(height: 16),
 
-                // AI Recommendation text (if available)
-                if (_geminiText.isNotEmpty)
+                // CASE 1: No detection - Idle message
+                if (!hasDetection)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "🎯 Point your camera at a plant leaf to get started. I'll analyze it and provide care recommendations!",
+                        style: TextStyle(
+                          fontSize: 15,
+                          height: 1.6,
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  )
+                // CASE 2: Healthy leaf - Status message
+                else if (isHealthy)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "✅ Your plant looks healthy! No disease detected. Keep up the good care!",
+                        style: TextStyle(
+                          fontSize: 15,
+                          height: 1.6,
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  )
+                // CASE 3: Disease detected - Show AI recommendation text
+                else if (_geminiText.isNotEmpty)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -322,53 +330,51 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
                         style: TextStyle(
                           fontSize: 15,
                           height: 1.6,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 16),
                     ],
                   ),
 
-                // Action button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _isLoadingAI ? null : _requestAIRecommendation,
-                    icon: _isLoadingAI
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.orange.shade600,
+                // Action button - only show for diseases, not for healthy leaves or no detection
+                if (isDisease)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoadingAI ? null : _requestAIRecommendation,
+                      icon: _isLoadingAI
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.orange.shade600,
+                                ),
                               ),
-                            ),
-                          )
-                        : Icon(Icons.auto_awesome,
-                            color: Colors.orange.shade600),
-                    label: Text(
-                      _isLoadingAI ? 'Getting Recommendation...' : 'Ask AI Again',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                            )
+                          : Icon(Icons.auto_awesome, color: Colors.orange.shade600),
+                      label: Text(
+                        _isLoadingAI ? 'Getting Recommendation...' : 'Ask AI Again',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // Helper text
-                if (_geminiText.isEmpty && !_isLoadingAI)
+                // Helper text - only for diseases
+                if (isDisease && _geminiText.isEmpty && !_isLoadingAI)
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
                     child: Text(

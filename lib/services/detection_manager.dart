@@ -23,15 +23,12 @@ class DetectionManager {
     _notificationProvider = provider;
   }
 
-  // Start polling every 10s (or any interval you choose)
+  // Start polling using the provided interval (fixed)
   void startPolling(Duration interval, [AppSettingsProvider? settings]) {
     _settings = settings;
     if (_timer != null) return;
 
-    final actualInterval =
-        _settings != null ? Duration(seconds: _settings!.updateIntervalSeconds) : interval;
-
-    _timer = Timer.periodic(actualInterval, (_) => _pollOnce());
+    _timer = Timer.periodic(interval, (_) => _pollOnce());
     _pollOnce(); // optional immediate first run
   }
 
@@ -45,7 +42,6 @@ class DetectionManager {
 
     // ✅ Check if live updates are enabled in settings
     if (_settings != null && !_settings!.liveUpdatesEnabled) {
-      print('⏸️ Live updates disabled in settings');
       return;
     }
 
@@ -55,20 +51,24 @@ class DetectionManager {
       // 1️⃣ Fetch detection
       final detections = await DetectionService.fetchDetections();
       if (detections.isEmpty) {
-        _isProcessing = false;
         return;
       }
       final detection = detections.first;
 
       // 2️⃣ Skip low confidence
       if (detection.confidence <= 0.01) {
-        print('Detection confidence too low; skipping.');
-        _isProcessing = false;
         return;
       }
 
-      // 3️⃣ Notify on new disease detection or confidence change
-      // Simple notification - just alert of disease, no recommendation
+      // ✅ Respect notification setting
+      final notificationsAllowed =
+          _settings == null ? true : _settings!.notificationsEnabled;
+
+      if (!notificationsAllowed) {
+        return;
+      }
+
+      // 3️⃣ Notify on detection
       final notificationService = NotificationService();
       await notificationService.showDiseaseDetectionNotification(
         diseaseName: detection.label,
@@ -84,10 +84,9 @@ class DetectionManager {
           solution: '', // ✅ No recommendation
         );
       }
-
-      print('✅ Disease detected: ${detection.label} (${(detection.confidence * 100).toStringAsFixed(1)}%)');
     } catch (e) {
-      print('DetectionManager error: $e');
+      // Intentionally swallow errors to keep background loop resilient.
+      // Consider forwarding to a crash/analytics service in production.
     } finally {
       _isProcessing = false;
     }

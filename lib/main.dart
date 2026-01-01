@@ -24,49 +24,51 @@ import 'package:http/http.dart' as http;
 import 'screens/splash_screen.dart';
 import 'screens/notification_list_page.dart';
 import 'services/notification_service.dart';
-
-
+import 'utils/app_log.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load environment variables from .env file
   await dotenv.load(fileName: ".env");
-  print('✅ Environment variables loaded');
-  print('   SUPABASE_URL: ${dotenv.env['SUPABASE_URL']}');
-  print('   SUPABASE_ANON_KEY: ${dotenv.env['SUPABASE_ANON_KEY']?.substring(0, 20)}...');
+  appLog('✅ Environment variables loaded');
+  appLog('   SUPABASE_URL: ${dotenv.env['SUPABASE_URL']}');
+  appLog(
+      '   SUPABASE_ANON_KEY: ${dotenv.env['SUPABASE_ANON_KEY']?.substring(0, 20)}...');
 
   final savedTheme = await ThemeService.loadThemeMode();
 
   // Initialize Supabase with credentials from .env
   await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL'] ?? 'https://iwbftcnzcuhdapjxrlhe.supabase.co',
-    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? 'sb_publishable_kKNvrSZqF98IAPkKGW_fdg_GqttByHO',
+    url: dotenv.env['SUPABASE_URL'] ??
+        'https://iwbftcnzcuhdapjxrlhe.supabase.co',
+    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ??
+        'sb_publishable_kKNvrSZqF98IAPkKGW_fdg_GqttByHO',
   );
-  print('✅ Supabase initialized');
+  appLog('✅ Supabase initialized');
 
   // Initialize Notification Service
   final notificationService = NotificationService();
   await notificationService.initialize();
-  print('✅ Notification service initialized');
+  appLog('✅ Notification service initialized');
 
   // ✅ PHASE 1: Initialize local cache service
   await LocalCacheService.initialize();
-  print('✅ Local cache initialized');
+  appLog('✅ Local cache initialized');
 
   // ✅ PHASE 1: Initialize sync service
   final syncService = SyncService();
   await syncService.initialize();
-  print('✅ Sync service initialized');
+  appLog('✅ Sync service initialized');
 
   // ✅ PHASE 1: Initialize app settings
   final appSettings = AppSettingsProvider();
   await appSettings.initialize();
-  print('✅ App settings initialized');
+  appLog('✅ App settings initialized');
 
   // Initialize notification provider
   final notificationProvider = NotificationProvider();
-  print('✅ Notification provider initialized');
+  appLog('✅ Notification provider initialized');
 
   // Start background auto-processing
   final detectionManager = DetectionManager();
@@ -75,14 +77,13 @@ void main() async {
     const Duration(seconds: 10),
     appSettings, // Pass settings to manager
   );
-  print('✅ Detection polling started');
+  appLog('✅ Detection polling started');
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) =>
-              ThemeProvider()..toggleTheme(savedTheme == ThemeMode.dark),
+          create: (_) => ThemeProvider()..toggleTheme(savedTheme == ThemeMode.dark),
         ),
         ChangeNotifierProvider(
           create: (_) => appSettings,
@@ -462,16 +463,16 @@ class _DashboardPageState extends State<DashboardPage> {
         
         // Force stream URL change to trigger didUpdateWidget
         if (isOnline) {
-          print('✅ Server is online - triggering stream restart');
+          appLog('✅ Server is online - triggering stream restart');
           _restartStream();
         } else {
-          print('❌ Server is offline - stream will show last frame');
+          appLog('❌ Server is offline - stream will show last frame');
         }
       }
     } catch (e) {
       // Server unreachable
       if (_isServerOnline && mounted) {
-        print('❌ Server health check failed: $e');
+        appLog('❌ Server health check failed: $e');
         setState(() {
           _isServerOnline = false;
         });

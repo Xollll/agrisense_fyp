@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../widgets/enhanced_app_bar.dart';
 import '../providers/app_settings_provider.dart';
+import '../services/local_cache_service.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -57,16 +58,6 @@ class SettingsPage extends StatelessWidget {
                   },
                   isDarkMode: isDarkMode,
                 ),
-                const SizedBox(height: 12),
-                _buildEnhancedSettingCard(
-                  context,
-                  title: "Update Interval",
-                  subtitle: _getIntervalLabel(appSettings.updateIntervalSeconds),
-                  icon: Icons.schedule_rounded,
-                  iconColor: const Color(0xFF3B82F6),
-                  onTap: () => _showModernIntervalMenu(context, appSettings),
-                  isDarkMode: isDarkMode,
-                ),
                 const SizedBox(height: 24),
 
                 // Notifications Section
@@ -99,30 +90,6 @@ class SettingsPage extends StatelessWidget {
 
                 // Data & Storage Section
                 _buildSectionHeader(context, "Data & Storage", Icons.storage),
-                const SizedBox(height: 12),
-                _buildEnhancedSettingCard(
-                  context,
-                  title: "Offline Mode",
-                  subtitle: appSettings.offlineModeEnabled
-                      ? "Working without internet"
-                      : "Requires internet connection",
-                  icon: Icons.cloud_off_rounded,
-                  iconColor: const Color(0xFF8B5CF6),
-                  isToggle: true,
-                  value: appSettings.offlineModeEnabled,
-                  onChanged: (value) async {
-                    HapticFeedback.mediumImpact();
-                    await appSettings.toggleOfflineMode(value);
-                    if (context.mounted) {
-                      _showStyledSnackBar(
-                        context,
-                        value ? '📴 Offline mode enabled' : '📡 Online mode active',
-                        value ? const Color(0xFF8B5CF6) : const Color(0xFF10B981),
-                      );
-                    }
-                  },
-                  isDarkMode: isDarkMode,
-                ),
                 const SizedBox(height: 12),
                 _buildEnhancedSettingCard(
                   context,
@@ -482,143 +449,6 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  String _getIntervalLabel(int seconds) {
-    if (seconds < 60) return '$seconds seconds';
-    return '${seconds ~/ 60} minute${seconds >= 120 ? 's' : ''}';
-  }
-
-  void _showModernIntervalMenu(BuildContext context, AppSettingsProvider appSettings) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade400,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF3B82F6).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.schedule_rounded,
-                          color: Color(0xFF3B82F6),
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Update Interval',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  ...[
-                    (5, 'Every 5 seconds', Icons.flash_on),
-                    (10, 'Every 10 seconds', Icons.speed),
-                    (30, 'Every 30 seconds', Icons.update),
-                    (60, 'Every 1 minute', Icons.schedule),
-                  ].map((option) {
-                    final isSelected = appSettings.updateIntervalSeconds == option.$1;
-                    return GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        appSettings.setUpdateInterval(option.$1);
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: isSelected
-                              ? LinearGradient(
-                                  colors: [
-                                    const Color(0xFF3B82F6).withOpacity(0.15),
-                                    const Color(0xFF3B82F6).withOpacity(0.08),
-                                  ],
-                                )
-                              : null,
-                          color: isSelected ? null : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: isSelected 
-                                ? const Color(0xFF3B82F6).withOpacity(0.3)
-                                : Colors.grey.shade200,
-                            width: isSelected ? 2 : 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              option.$3,
-                              color: isSelected 
-                                  ? const Color(0xFF3B82F6) 
-                                  : Colors.grey.shade600,
-                              size: 22,
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Text(
-                                option.$2,
-                                style: TextStyle(
-                                  fontWeight: isSelected 
-                                      ? FontWeight.bold 
-                                      : FontWeight.w600,
-                                  color: isSelected 
-                                      ? const Color(0xFF3B82F6) 
-                                      : Colors.grey.shade800,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ),
-                            if (isSelected)
-                              const Icon(
-                                Icons.check_circle,
-                                color: Color(0xFF3B82F6),
-                                size: 22,
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showStyledSnackBar(BuildContext context, String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -696,14 +526,21 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               HapticFeedback.mediumImpact();
               Navigator.pop(context);
-              _showStyledSnackBar(
-                context,
-                '🗑️ Cache cleared successfully',
-                const Color(0xFF10B981),
-              );
+
+              final ok = await LocalCacheService.clearAllCache();
+
+              if (context.mounted) {
+                _showStyledSnackBar(
+                  context,
+                  ok
+                      ? '🗑️ Cache cleared successfully'
+                      : '⚠️ Failed to clear cache',
+                  ok ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
