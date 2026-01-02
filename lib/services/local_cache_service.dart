@@ -1,6 +1,7 @@
 // lib/services/local_cache_service.dart
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:agrisense/utils/app_log.dart';
 
 /// Local cache service for offline support and data persistence
 /// Stores detection history locally and manages sync queue
@@ -14,7 +15,7 @@ class LocalCacheService {
   /// Initialize cache service
   static Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
-    print('✅ Local cache service initialized');
+    appLog('Local cache service initialized');
   }
 
   // ============= DETECTION CACHING =============
@@ -49,10 +50,10 @@ class LocalCacheService {
         jsonEncode(detections),
       );
 
-      print('✅ Detection cached locally: $label');
+      appLog('Detection cached locally: $label');
       return true;
     } catch (e) {
-      print('❌ Cache detection error: $e');
+      appLog('Cache detection error: $e');
       return false;
     }
   }
@@ -66,7 +67,7 @@ class LocalCacheService {
       final List<dynamic> decoded = jsonDecode(cached);
       return decoded.cast<Map<String, dynamic>>();
     } catch (e) {
-      print('❌ Get cached detections error: $e');
+      appLog('Get cached detections error: $e');
       return [];
     }
   }
@@ -92,7 +93,7 @@ class LocalCacheService {
 
       return false;
     } catch (e) {
-      print('❌ Mark as synced error: $e');
+      appLog('Mark as synced error: $e');
       return false;
     }
   }
@@ -118,10 +119,10 @@ class LocalCacheService {
       });
 
       await _prefs.setString(_syncQueueKey, jsonEncode(queue));
-      print('📤 Added to sync queue: $label');
+      appLog('Added to sync queue: $label');
       return true;
     } catch (e) {
-      print('❌ Sync queue error: $e');
+      appLog('Sync queue error: $e');
       return false;
     }
   }
@@ -135,7 +136,7 @@ class LocalCacheService {
       final List<dynamic> decoded = jsonDecode(queue);
       return decoded.cast<Map<String, dynamic>>();
     } catch (e) {
-      print('❌ Get sync queue error: $e');
+      appLog('Get sync queue error: $e');
       return [];
     }
   }
@@ -144,7 +145,7 @@ class LocalCacheService {
   static Future<bool> clearSyncQueue() async {
     try {
       await _prefs.remove(_syncQueueKey);
-      print('✅ Sync queue cleared');
+      appLog('Sync queue cleared');
       return true;
     } catch (e) {
       return false;
@@ -197,10 +198,10 @@ class LocalCacheService {
       await _prefs.remove(_detectionsCacheKey);
       await _prefs.remove(_syncQueueKey);
       await _prefs.remove(_lastSyncTimeKey);
-      print('🗑️ All cache cleared');
+      appLog('All cache cleared');
       return true;
     } catch (e) {
-      print('❌ Clear cache error: $e');
+      appLog('Clear cache error: $e');
       return false;
     }
   }

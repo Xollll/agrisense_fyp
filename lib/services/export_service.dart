@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import '../services/statistics_service.dart';
+import 'package:agrisense/utils/app_log.dart';
 
 /// Model for export data
 class ExportData {
@@ -32,7 +33,7 @@ class ExportService {
     required List<Map<String, dynamic>> detections,
   }) async {
     try {
-      print('📊 Exporting to CSV...');
+      appLog('Exporting to CSV...');
 
       // Prepare CSV data from disease statistics
       List<List<dynamic>> csvData = [
@@ -63,7 +64,7 @@ class ExportService {
       try {
         directory = await getDownloadsDirectory();
       } catch (e) {
-        print('⚠️ Downloads directory not available, using app documents directory');
+        appLog('Downloads directory not available, using app documents directory');
         directory = await getApplicationDocumentsDirectory();
       }
 
@@ -77,11 +78,11 @@ class ExportService {
 
       // Write to file
       await file.writeAsString(csvString);
-      print('✅ CSV exported to: ${file.path}');
+      appLog('CSV exported to: ${file.path}');
 
       return file;
     } catch (e) {
-      print('❌ CSV export error: $e');
+      appLog('CSV export error: $e');
       throw Exception('Failed to export CSV: $e');
     }
   }
@@ -93,7 +94,7 @@ class ExportService {
     required List<DiseaseStats> diseaseStats,
   }) async {
     try {
-      print('📄 Exporting to PDF...');
+      appLog('Exporting to PDF...');
 
       final pdf = pw.Document();
 
@@ -301,7 +302,7 @@ class ExportService {
       try {
         directory = await getDownloadsDirectory();
       } catch (e) {
-        print('⚠️ Downloads directory not available, using app documents directory');
+        appLog('Downloads directory not available, using app documents directory');
         directory = await getApplicationDocumentsDirectory();
       }
 
@@ -314,11 +315,11 @@ class ExportService {
       final file = File('${directory.path}/$fileName');
 
       await file.writeAsBytes(await pdf.save());
-      print('✅ PDF exported to: ${file.path}');
+      appLog('PDF exported to: ${file.path}');
 
       return file;
     } catch (e) {
-      print('❌ PDF export error: $e');
+      appLog('PDF export error: $e');
       throw Exception('Failed to export PDF: $e');
     }
   }
@@ -326,7 +327,7 @@ class ExportService {
   /// Share file via system share dialog
   static Future<void> shareFile(File file) async {
     try {
-      print('📤 Sharing file...');
+      appLog('Sharing file...');
 
       await Share.shareXFiles(
         [XFile(file.path)],
@@ -334,9 +335,9 @@ class ExportService {
         text: 'Here is my AgriSense detection report',
       );
 
-      print('✅ File shared successfully');
+      appLog('File shared successfully');
     } catch (e) {
-      print('❌ Share error: $e');
+      appLog('Share error: $e');
       throw Exception('Failed to share file: $e');
     }
   }
@@ -348,7 +349,7 @@ class ExportService {
     required List<DiseaseStats> diseaseStats,
   }) async {
     try {
-      print('📊 Exporting to both CSV and PDF...');
+      appLog('Exporting to both CSV and PDF...');
 
       final csv = await exportToCSV(detections: detections);
       final pdf = await exportToPDF(
@@ -362,7 +363,7 @@ class ExportService {
         'pdf': pdf,
       };
     } catch (e) {
-      print('❌ Dual export error: $e');
+      appLog('Dual export error: $e');
       throw Exception('Failed to export both formats: $e');
     }
   }

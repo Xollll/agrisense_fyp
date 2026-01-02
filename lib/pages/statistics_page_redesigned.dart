@@ -7,6 +7,7 @@ import 'package:open_filex/open_filex.dart';
 import '../providers/statistics_provider.dart';
 import '../widgets/enhanced_app_bar.dart';
 import '../services/export_service.dart';
+import 'package:agrisense/utils/app_log.dart';
 
 class StatisticsPageModern extends StatefulWidget {
   const StatisticsPageModern({Key? key}) : super(key: key);
@@ -2039,7 +2040,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
       final fileName = file.path.split('/').last;
       final isCSV = fileName.toLowerCase().endsWith('.csv');
       
-      print('📂 Opening: $fileName');
+      appLog('Opening: $fileName');
       
       // Platform-specific code to open the folder
       if (Platform.isWindows) {
@@ -2151,8 +2152,11 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
         }
       }
     } catch (e) {
-      print('❌ Error opening file/folder: $e');
-      _showFileLocationBottomSheet(file, file.path.split('/').last.toLowerCase().endsWith('.csv'));
+      appLog('Error opening file/folder: $e');
+      _showFileLocationBottomSheet(
+        file,
+        file.path.split('/').last.toLowerCase().endsWith('.csv'),
+      );
     }
   }
 

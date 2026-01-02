@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:agrisense/utils/app_log.dart';
 
 // =============================================================
 // MJPEG STREAM WIDGET
@@ -41,7 +42,7 @@ class _MJPEGStreamState extends State<MJPEGStream> {
     super.didUpdateWidget(oldWidget);
     // If URL changed, restart the stream
     if (oldWidget.url != widget.url) {
-      print('🔄 Stream URL changed, restarting...');
+      appLog('Stream URL changed, restarting...');
       _subscription?.cancel();
       _reconnectTimer?.cancel();
       _currentFrame = null;
@@ -81,7 +82,7 @@ class _MJPEGStreamState extends State<MJPEGStream> {
         _shouldShowFrame = true; // Start showing frames
       });
       widget.onStatusChanged?.call(true, false);
-      print('✅ MJPEG Stream connected');
+      appLog('MJPEG Stream connected');
 
       List<int> buffer = [];
 
@@ -116,7 +117,7 @@ class _MJPEGStreamState extends State<MJPEGStream> {
           }
         },
         onError: (e) {
-          print('❌ MJPEG Stream error: $e');
+          appLog('MJPEG Stream error: $e');
           // Connection error - attempt to reconnect
           if (mounted) {
             setState(() {
@@ -126,12 +127,12 @@ class _MJPEGStreamState extends State<MJPEGStream> {
               _currentFrame = null; // Clear the last frame
             });
             widget.onStatusChanged?.call(false, false);
-            
+
             // Auto-reconnect after 3 seconds
             _reconnectTimer?.cancel();
             _reconnectTimer = Timer(const Duration(seconds: 3), () {
               if (mounted) {
-                print('🔄 Attempting to reconnect to stream...');
+                appLog('Attempting to reconnect to stream...');
                 setState(() {
                   _isConnecting = true;
                   _currentFrame = null;
@@ -142,7 +143,7 @@ class _MJPEGStreamState extends State<MJPEGStream> {
           }
         },
         onDone: () {
-          print('⏹️ MJPEG Stream closed');
+          appLog('MJPEG Stream closed');
           // Connection closed - attempt to reconnect
           if (mounted) {
             setState(() {
@@ -152,12 +153,12 @@ class _MJPEGStreamState extends State<MJPEGStream> {
               _currentFrame = null; // Clear the last frame
             });
             widget.onStatusChanged?.call(false, false);
-            
+
             // Auto-reconnect after 3 seconds
             _reconnectTimer?.cancel();
             _reconnectTimer = Timer(const Duration(seconds: 3), () {
               if (mounted) {
-                print('🔄 Attempting to reconnect to stream...');
+                appLog('Attempting to reconnect to stream...');
                 setState(() {
                   _isConnecting = true;
                   _currentFrame = null;
@@ -169,7 +170,7 @@ class _MJPEGStreamState extends State<MJPEGStream> {
         },
       );
     } catch (e) {
-      print("❌ MJPEG error: $e");
+      appLog('MJPEG error: $e');
       // Connection failed
       setState(() {
         _isConnecting = false;
@@ -178,12 +179,12 @@ class _MJPEGStreamState extends State<MJPEGStream> {
         _currentFrame = null; // Clear on error
       });
       widget.onStatusChanged?.call(false, false);
-      
+
       // Retry connection after 3 seconds
       _reconnectTimer?.cancel();
       _reconnectTimer = Timer(const Duration(seconds: 3), () {
         if (mounted) {
-          print('🔄 Retrying stream connection after error...');
+          appLog('Retrying stream connection after error...');
           setState(() {
             _isConnecting = true;
             _currentFrame = null;

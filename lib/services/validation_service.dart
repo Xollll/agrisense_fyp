@@ -1,3 +1,5 @@
+import 'package:agrisense/utils/app_log.dart';
+
 /// Centralized validation service for all API responses and data integrity
 /// Ensures app stability by validating data before use
 class ValidationService {
@@ -107,7 +109,7 @@ class ValidationService {
       if (timestamp is String) return DateTime.parse(timestamp);
       return DateTime.now();
     } catch (e) {
-      print('❌ Invalid timestamp format: $timestamp');
+      appLog('Invalid timestamp format: $timestamp');
       return DateTime.now();
     }
   }

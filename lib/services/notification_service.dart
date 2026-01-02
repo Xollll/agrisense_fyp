@@ -1,5 +1,6 @@
 // lib/services/notification_service.dart
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:agrisense/utils/app_log.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -37,16 +38,16 @@ class NotificationService {
       await _flutterLocalNotificationsPlugin.initialize(
         initializationSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
-          print('🔔 Notification tapped: ${response.payload}');
+          appLog('Notification tapped: ${response.payload}');
         },
       );
 
       // Request permissions for iOS
       await _requestIOSPermissions();
 
-      print('✅ Notification service initialized');
+      appLog('Notification service initialized');
     } catch (e) {
-      print('❌ Error initializing notifications: $e');
+      appLog('Error initializing notifications: $e');
     }
   }
 
@@ -61,9 +62,9 @@ class NotificationService {
             badge: true,
             sound: true,
           );
-      print('✅ iOS notification permissions requested');
+      appLog('iOS notification permissions requested');
     } catch (e) {
-      print('⚠️ Error requesting iOS permissions: $e');
+      appLog('Error requesting iOS permissions: $e');
     }
   }
 
@@ -115,9 +116,9 @@ class NotificationService {
         payload: payload,
       );
 
-      print('✅ Disease notification sent: $diseaseName');
+      appLog('Disease notification sent: $diseaseName');
     } catch (e) {
-      print('❌ Error showing notification: $e');
+      appLog('Error showing notification: $e');
     }
   }
 
@@ -164,9 +165,9 @@ class NotificationService {
         payload: diseaseName,
       );
 
-      print('✅ Recommendation notification sent');
+      appLog('Recommendation notification sent');
     } catch (e) {
-      print('❌ Error showing recommendation notification: $e');
+      appLog('Error showing recommendation notification: $e');
     }
   }
 
@@ -174,9 +175,9 @@ class NotificationService {
   Future<void> cancelAllNotifications() async {
     try {
       await _flutterLocalNotificationsPlugin.cancelAll();
-      print('✅ All notifications cancelled');
+      appLog('All notifications cancelled');
     } catch (e) {
-      print('❌ Error cancelling notifications: $e');
+      appLog('Error cancelling notifications: $e');
     }
   }
 
@@ -184,9 +185,9 @@ class NotificationService {
   Future<void> cancelNotification(int id) async {
     try {
       await _flutterLocalNotificationsPlugin.cancel(id);
-      print('✅ Notification $id cancelled');
+      appLog('Notification $id cancelled');
     } catch (e) {
-      print('❌ Error cancelling notification: $e');
+      appLog('Error cancelling notification: $e');
     }
   }
 }

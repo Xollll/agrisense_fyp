@@ -1,6 +1,7 @@
 // lib/services/statistics_service.dart
 import 'dart:convert';
 import 'supabase_service.dart';
+import 'package:agrisense/utils/app_log.dart';
 
 /// Model for disease statistics
 class DiseaseStats {
@@ -38,7 +39,7 @@ class StatisticsService {
     try {
       return await _supabaseService.getDetectionHistory();
     } catch (e) {
-      print('❌ Error fetching detection history: $e');
+      appLog('Error fetching detection history: $e');
       return [];
     }
   }
@@ -206,9 +207,9 @@ class StatisticsService {
         confidence: confidence,
         solution: recommendation,
       );
-      print('✅ Detection added to Supabase: $diseaseLabel');
+      appLog('Detection added to Supabase: $diseaseLabel');
     } catch (e) {
-      print('❌ Error adding detection: $e');
+      appLog('Error adding detection: $e');
       rethrow;
     }
   }
@@ -218,10 +219,10 @@ class StatisticsService {
     try {
       // For now, we don't support bulk delete in SupabaseService
       // This would typically be done via a backend function or direct DB access
-      print('⚠️ Clear history not yet implemented for Supabase');
+      appLog('Clear history not yet implemented for Supabase');
       // TODO: Implement bulk delete in SupabaseService if needed
     } catch (e) {
-      print('❌ Error clearing history: $e');
+      appLog('Error clearing history: $e');
       rethrow;
     }
   }

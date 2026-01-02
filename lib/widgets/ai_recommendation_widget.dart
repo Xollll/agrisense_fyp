@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../detection_service.dart';
 import '../gemini_service.dart';
 import '../services/supabase_service.dart';
+import 'package:agrisense/utils/app_log.dart';
 
 // =============================================================
 // AI RECOMMENDATION WIDGET
@@ -102,9 +103,9 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
             solution: ai,
             timestamp: DateTime.now().toIso8601String(),
           );
-          print('✅ Recommendation saved to Supabase');
+          appLog('Recommendation saved to Supabase');
         } catch (e) {
-          print('⚠️ Failed to save recommendation to Supabase: $e');
+          appLog('Failed to save recommendation to Supabase: $e');
         }
       }
 
@@ -173,7 +174,7 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.orange.withValues(alpha: 0.1),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),

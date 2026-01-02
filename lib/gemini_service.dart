@@ -5,6 +5,7 @@ import 'services/http_retry_service.dart';
 import 'services/validation_service.dart';
 import 'detection_service.dart';
 import 'config/network_config.dart';
+import 'utils/app_log.dart';
 
 class GeminiService {
   // Cache for hybrid recommendations
@@ -90,19 +91,20 @@ class GeminiService {
       // If same cache key is being fetched, return existing future
       // This prevents duplicate API calls when multiple widgets request simultaneously
       if (_pendingRequests.containsKey(smartCacheKey)) {
-        print("⏳ Request already in-flight for [$smartCacheKey], waiting for result...");
+        appLog('Request already in-flight for [$smartCacheKey], waiting for result...');
         return _pendingRequests[smartCacheKey]!;
       }
 
       // ✅ RATE LIMITING: Check if we're making requests too frequently for same disease
       // Minimum interval is 5 minutes between API calls for same disease combination
       if (!forceRefresh && _lastRequestTime.containsKey(smartCacheKey)) {
-        final timeSinceLastRequest = DateTime.now().difference(_lastRequestTime[smartCacheKey]!);
+        final timeSinceLastRequest =
+            DateTime.now().difference(_lastRequestTime[smartCacheKey]!);
         if (timeSinceLastRequest < _minRequestInterval) {
           // Within cooldown period - return cached result if available
           if (_recommendationCache.containsKey(smartCacheKey)) {
-            print("✓ Cache HIT (Rate Limited): Using cached recommendation for [$smartCacheKey]");
-            print("   Time since last request: ${timeSinceLastRequest.inSeconds}s (min: ${_minRequestInterval.inSeconds}s)");
+            appLog('Cache HIT (Rate Limited): Using cached recommendation for [$smartCacheKey]');
+            appLog('Time since last request: ${timeSinceLastRequest.inSeconds}s (min: ${_minRequestInterval.inSeconds}s)');
             _lastCacheKey = smartCacheKey;
             return _recommendationCache[smartCacheKey]!;
           }
@@ -117,16 +119,15 @@ class GeminiService {
       // If cache hit and no force refresh: return cached recommendation
       if (!shouldGenerateFresh &&
           _recommendationCache.containsKey(smartCacheKey)) {
-        print(
-            "✓ Cache HIT: Using cached recommendation for [$smartCacheKey]");
+        appLog('Cache HIT: Using cached recommendation for [$smartCacheKey]');
         _lastCacheKey = smartCacheKey;
         return _recommendationCache[smartCacheKey]!;
       }
 
       // Cache MISS or FORCE REFRESH: Generate fresh recommendation
-      print("🌐 Cache MISS or FORCE REFRESH: Making Gemini API call");
-      print("   Current key: $smartCacheKey");
-      print("   Last key: $_lastCacheKey");
+      appLog('Cache MISS or FORCE REFRESH: Making Gemini API call');
+      appLog('Current key: $smartCacheKey');
+      appLog('Last key: $_lastCacheKey');
 
       // Build disease list for prompt
       final diseaseList = uniqueDiseases.entries
@@ -177,7 +178,7 @@ Use simple farming language. Keep it brief. """;
         _pendingRequests.remove(smartCacheKey);
       }
     } catch (e) {
-      print("Gemini Exception: $e");
+      appLog('Gemini Exception: $e');
       return "Error generating recommendation.";
     }
   }
@@ -203,7 +204,7 @@ Use simple farming language. Keep it brief. """;
 
       // ✅ Validate AI response before caching
       if (!ValidationService.isValidAIResponse(recommendation)) {
-        print('❌ AI response validation failed');
+        appLog('AI response validation failed');
         return "Unable to generate valid recommendation. Please try again.";
       }
 
@@ -214,11 +215,11 @@ Use simple farming language. Keep it brief. """;
       _recommendationCache[smartCacheKey] = sanitized;
       _lastCacheKey = smartCacheKey;
 
-      print("✓ Recommendation cached for key: $smartCacheKey");
+      appLog('Recommendation cached for key: $smartCacheKey');
 
       return sanitized;
     } else {
-      print("Gemini API Error: ${response.body}");
+      appLog('Gemini API Error: ${response.body}');
       return "Error generating recommendation.";
     }
   }

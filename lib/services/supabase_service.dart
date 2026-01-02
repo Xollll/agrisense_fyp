@@ -1,5 +1,6 @@
 // lib/services/supabase_service.dart
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:agrisense/utils/app_log.dart';
 
 class SupabaseService {
   // Singleton pattern
@@ -18,7 +19,7 @@ class SupabaseService {
     try {
       return _client.auth.currentUser != null || true; // True if client exists
     } catch (e) {
-      print('❌ Supabase not initialized: $e');
+      appLog('Supabase not initialized: $e');
       return false;
     }
   }
@@ -33,8 +34,8 @@ class SupabaseService {
     try {
       final ts = timestamp ?? DateTime.now().toIso8601String();
 
-      print('📤 Saving detection: $label (confidence: $confidence)');
-      
+      appLog('Saving detection: $label (confidence: $confidence)');
+
       final res = await _client.from('detections').insert({
         'label': label,
         'confidence': confidence,
@@ -45,13 +46,13 @@ class SupabaseService {
       // Supabase .select() returns a List (empty if no data)
       final data = res as List<dynamic>;
       if (data.isEmpty) {
-        print('❌ Supabase insert error: No data returned');
+        appLog('Supabase insert error: No data returned');
         return false;
       }
-      print('✅ Detection saved successfully');
+      appLog('Detection saved successfully');
       return true;
     } catch (e) {
-      print('❌ SupabaseService.saveDetection error: $e');
+      appLog('SupabaseService.saveDetection error: $e');
       return false;
     }
   }
@@ -59,9 +60,9 @@ class SupabaseService {
   // Return list of maps for UI
   Future<List<Map<String, dynamic>>> getDetectionHistory() async {
     try {
-      print('📊 Fetching detection history from Supabase...');
-      print('📊 Client initialized: $isInitialized');
-      
+      appLog('Fetching detection history from Supabase...');
+      appLog('Client initialized: $isInitialized');
+
       final res = await _client
           .from('detections')
           .select()
@@ -69,12 +70,12 @@ class SupabaseService {
 
       // res is typically a List<dynamic>
       final data = res as List<dynamic>? ?? [];
-      print('✅ Fetched ${data.length} detections');
-      
+      appLog('Fetched ${data.length} detections');
+
       if (data.isNotEmpty) {
-        print('📄 Sample detection: ${data.first}');
+        appLog('Sample detection: ${data.first}');
       }
-      
+
       // Map field names for compatibility with StatisticsService
       return data.map((e) {
         final map = Map<String, dynamic>.from(e as Map);
@@ -89,8 +90,8 @@ class SupabaseService {
         return map;
       }).toList();
     } catch (e) {
-      print('❌ SupabaseService.getDetectionHistory error: $e');
-      print('❌ Stack trace: ${StackTrace.current}');
+      appLog('SupabaseService.getDetectionHistory error: $e');
+      appLog('Stack trace: ${StackTrace.current}');
       return [];
     }
   }

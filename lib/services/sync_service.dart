@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'local_cache_service.dart';
 import 'supabase_service.dart';
+import 'package:agrisense/utils/app_log.dart';
 
 /// Service for managing online/offline sync and connectivity
 class SyncService {
@@ -28,7 +29,7 @@ class SyncService {
       // Check initial connectivity
       final result = await _connectivity.checkConnectivity();
       _isOnline = result != ConnectivityResult.none;
-      print('📡 Initial connection: ${_isOnline ? 'ONLINE' : 'OFFLINE'}');
+      appLog('Initial connection: ${_isOnline ? 'ONLINE' : 'OFFLINE'}');
 
       // Listen for connectivity changes
       _connectionSubscription =
@@ -38,9 +39,9 @@ class SyncService {
           _isOnline = result != ConnectivityResult.none;
 
           if (wasOnline && !_isOnline) {
-            print('📴 Went OFFLINE - using local cache');
+            appLog('Went OFFLINE - using local cache');
           } else if (!wasOnline && _isOnline) {
-            print('📡 Back ONLINE - syncing cache...');
+            appLog('Back ONLINE - syncing cache...');
             syncPendingData();
           }
         },
@@ -52,23 +53,23 @@ class SyncService {
         (_) => syncPendingData(),
       );
     } catch (e) {
-      print('❌ Sync service init error: $e');
+      appLog('Sync service init error: $e');
     }
   }
 
   /// Sync pending detections to cloud
   Future<void> syncPendingData() async {
     if (!_isOnline) {
-      print('📴 Offline - skipping sync');
+      appLog('Offline - skipping sync');
       return;
     }
 
     try {
-      print('🔄 Starting data sync...');
+      appLog('Starting data sync...');
 
       final unsynced = await LocalCacheService.getUnsyncedDetections();
       if (unsynced.isEmpty) {
-        print('✅ No data to sync');
+        appLog('No data to sync');
         return;
       }
 
@@ -89,14 +90,14 @@ class SyncService {
             syncedCount++;
           }
         } catch (e) {
-          print('❌ Sync failed for ${detection['label']}: $e');
+          appLog('Sync failed for ${detection['label']}: $e');
         }
       }
 
       await LocalCacheService.updateLastSyncTime();
-      print('✅ Synced $syncedCount/${unsynced.length} detections');
+      appLog('Synced $syncedCount/${unsynced.length} detections');
     } catch (e) {
-      print('❌ Sync error: $e');
+      appLog('Sync error: $e');
     }
   }
 

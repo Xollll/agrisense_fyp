@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/notification_history_service.dart';
+import 'package:agrisense/utils/app_log.dart';
 
 /// Model for a notification alert
 class NotificationAlert {
@@ -64,7 +65,7 @@ class NotificationProvider extends ChangeNotifier {
       _calculateUnreadCount();
       notifyListeners();
     } catch (e) {
-      print('❌ Error initializing notifications: $e');
+      appLog('Error initializing notifications: $e');
     }
   }
 
@@ -90,7 +91,7 @@ class NotificationProvider extends ChangeNotifier {
     await _historyService.saveNotification(notification);
 
     notifyListeners();
-    print('✅ Notification added: $disease');
+    appLog('Notification added: $disease');
   }
 
   /// Mark a notification as read

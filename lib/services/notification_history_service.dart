@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/notification_provider.dart';
+import 'package:agrisense/utils/app_log.dart';
 
 /// Service to manage notification history persistence
 class NotificationHistoryService {
@@ -22,7 +23,7 @@ class NotificationHistoryService {
           .map((json) => NotificationAlert.fromJson(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('❌ Error loading notifications: $e');
+      appLog('Error loading notifications: $e');
       return [];
     }
   }
@@ -50,9 +51,9 @@ class NotificationHistoryService {
       final jsonList = notifications.map((n) => n.toJson()).toList();
       await prefs.setString(_notificationKey, jsonEncode(jsonList));
       
-      print('✅ Notification saved: ${notification.disease}');
+      appLog('Notification saved: ${notification.disease}');
     } catch (e) {
-      print('❌ Error saving notification: $e');
+      appLog('Error saving notification: $e');
     }
   }
 
@@ -74,7 +75,7 @@ class NotificationHistoryService {
         await prefs.setString(_notificationKey, jsonEncode(jsonList));
       }
     } catch (e) {
-      print('❌ Error updating notification: $e');
+      appLog('Error updating notification: $e');
     }
   }
 
@@ -93,9 +94,9 @@ class NotificationHistoryService {
       final jsonList = notifications.map((n) => n.toJson()).toList();
       await prefs.setString(_notificationKey, jsonEncode(jsonList));
       
-      print('✅ Notification deleted: $notificationId');
+      appLog('Notification deleted: $notificationId');
     } catch (e) {
-      print('❌ Error deleting notification: $e');
+      appLog('Error deleting notification: $e');
     }
   }
 
@@ -104,9 +105,9 @@ class NotificationHistoryService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_notificationKey);
-      print('✅ All notifications cleared');
+      appLog('All notifications cleared');
     } catch (e) {
-      print('❌ Error clearing notifications: $e');
+      appLog('Error clearing notifications: $e');
     }
   }
 
@@ -116,7 +117,7 @@ class NotificationHistoryService {
       final notifications = await getNotifications();
       return notifications.length;
     } catch (e) {
-      print('❌ Error getting notification count: $e');
+      appLog('Error getting notification count: $e');
       return 0;
     }
   }
@@ -127,7 +128,7 @@ class NotificationHistoryService {
       final notifications = await getNotifications();
       return notifications.where((n) => !n.isRead).length;
     } catch (e) {
-      print('❌ Error getting unread count: $e');
+      appLog('Error getting unread count: $e');
       return 0;
     }
   }

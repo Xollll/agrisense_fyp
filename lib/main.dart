@@ -521,7 +521,7 @@ class _DashboardPageState extends State<DashboardPage> {
   void _onDiseaseCleared() {
     // Called when disease disappears from persistent state
     // Can be used for analytics or other cleanup
-    print("Disease cleared");
+    appLog('Disease cleared');
   }
 
   @override

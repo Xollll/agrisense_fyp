@@ -2,6 +2,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
+import 'package:agrisense/utils/app_log.dart';
 
 /// HTTP client with automatic retry logic using exponential backoff
 /// Handles network failures gracefully with automatic retries
@@ -24,19 +25,20 @@ class HttpRetryService {
     delay ??= initialDelay;
 
     try {
-      print('🔄 GET $url (attempt ${maxRetries - retries + 1}/$maxRetries)');
+      appLog('GET $url (attempt ${maxRetries - retries + 1}/$maxRetries)');
 
-      final response = await http.get(url, headers: headers).timeout(requestTimeout);
+      final response =
+          await http.get(url, headers: headers).timeout(requestTimeout);
 
       // Success
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        print('✅ Success: ${response.statusCode}');
+        appLog('Success: ${response.statusCode}');
         return response;
       }
 
       // Server error (5xx) - retry
       if (response.statusCode >= 500) {
-        print('⚠️ Server error ${response.statusCode}, retrying...');
+        appLog('Server error ${response.statusCode}, retrying...');
         if (retries > 0) {
           await Future.delayed(delay);
           return get(
@@ -53,7 +55,7 @@ class HttpRetryService {
 
       return response;
     } on TimeoutException {
-      print('⏱️ Timeout, retrying...');
+      appLog('Timeout, retrying...');
 
       if (retries > 0) {
         await Future.delayed(delay);
@@ -70,7 +72,7 @@ class HttpRetryService {
 
       rethrow;
     } catch (e) {
-      print('❌ Network error: $e');
+      appLog('Network error: $e');
 
       if (retries > 0) {
         await Future.delayed(delay);
@@ -101,24 +103,26 @@ class HttpRetryService {
     delay ??= initialDelay;
 
     try {
-      print('🔄 POST $url (attempt ${maxRetries - retries + 1}/$maxRetries)');
+      appLog('POST $url (attempt ${maxRetries - retries + 1}/$maxRetries)');
 
-      final response = await http.post(
-        url,
-        headers: headers,
-        body: body,
-        encoding: encoding,
-      ).timeout(requestTimeout);
+      final response = await http
+          .post(
+            url,
+            headers: headers,
+            body: body,
+            encoding: encoding,
+          )
+          .timeout(requestTimeout);
 
       // Success
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        print('✅ Success: ${response.statusCode}');
+        appLog('Success: ${response.statusCode}');
         return response;
       }
 
       // Server error (5xx) - retry
       if (response.statusCode >= 500) {
-        print('⚠️ Server error ${response.statusCode}, retrying...');
+        appLog('Server error ${response.statusCode}, retrying...');
         if (retries > 0) {
           await Future.delayed(delay);
           return post(
@@ -137,7 +141,7 @@ class HttpRetryService {
 
       return response;
     } on TimeoutException {
-      print('⏱️ Timeout, retrying...');
+      appLog('Timeout, retrying...');
 
       if (retries > 0) {
         await Future.delayed(delay);
@@ -156,7 +160,7 @@ class HttpRetryService {
 
       rethrow;
     } catch (e) {
-      print('❌ Network error: $e');
+      appLog('Network error: $e');
 
       if (retries > 0) {
         await Future.delayed(delay);
