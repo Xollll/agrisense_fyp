@@ -120,26 +120,51 @@ class DetectionService {
         Uri.parse("$serverUrl/latest_detection"),
       ).timeout(NetworkConfig.detectionFetchTimeout);
 
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
+      if (response.statusCode != 200) {
+        appLog('❌ Server error: ${response.statusCode}');
+        return [];
+      }
 
-        appLog('📥 Raw response: $decoded');
+      final decoded = jsonDecode(response.body);
+      appLog('📥 Raw response: $decoded');
 
-        if (decoded["status"] != "ok") {
+      // Some backends wrap payloads (status/data), others return direct list/map.
+      dynamic payload = decoded;
+      if (decoded is Map<String, dynamic>) {
+        if (decoded["status"] != null && decoded["status"] != "ok") {
           appLog('ℹ️ No detection data available');
           return [];
         }
+        payload = decoded['detections'] ?? decoded['data'] ?? decoded;
+      }
 
+      // Normalize to a List<Map<String, dynamic>>
+      final List<Map<String, dynamic>> items;
+      if (payload is List) {
+        items = payload
+            .whereType<Map>()
+            .map((m) => m.cast<String, dynamic>())
+            .toList();
+      } else if (payload is Map<String, dynamic>) {
+        items = [payload];
+      } else {
+        appLog('⚠️ Unexpected detection payload type: ${payload.runtimeType}');
+        return [];
+      }
+
+      final results = <NormalizedDetection>[];
+
+      for (final item in items) {
         // Extract raw values using flexible field names
-        final rawLabel = _extractLabel(decoded);
-        final rawConfidence = _extractConfidence(decoded);
-        final rawTimestamp = _extractTimestamp(decoded);
+        final rawLabel = _extractLabel(item);
+        final rawConfidence = _extractConfidence(item);
+        final rawTimestamp = _extractTimestamp(item);
 
         // Handle case where label is empty but confidence exists
         if (rawLabel.isEmpty && rawConfidence > 0.0) {
           appLog(
               '⚠️ ISSUE: Confidence detected ($rawConfidence) but label is empty!');
-          appLog('📋 Response structure: ${decoded.keys}');
+          appLog('📋 Item structure: ${item.keys}');
         }
 
         // ✅ Validate response with extracted values
@@ -149,30 +174,30 @@ class DetectionService {
           'timestamp': rawTimestamp,
         };
 
-        final validation = ValidationService.validateDetectionResponse(validationInput);
+        final validation =
+            ValidationService.validateDetectionResponse(validationInput);
 
         if (validation['errors'].isNotEmpty) {
           appLog('⚠️ Validation warnings: ${validation['errors']}');
         }
 
-        final detection = NormalizedDetection(
-          label: validation['label'] ?? "Unknown",
-          confidence: validation['confidence'] ?? 0.0,
-          time: validation['timestamp'] ?? "",
+        results.add(
+          NormalizedDetection(
+            label: (validation['label'] as String?)?.isNotEmpty == true
+                ? validation['label']
+                : 'Unknown',
+            confidence: (validation['confidence'] as double?) ?? 0.0,
+            time: (validation['timestamp'] as String?) ?? "",
+          ),
         );
-
-        appLog(
-            '✅ Detection processed: Label=${detection.label}, Confidence=${detection.confidence}');
-        return [detection];
-      } else {
-        appLog('❌ Server error: ${response.statusCode}');
-        return [];
       }
+
+      appLog('✅ Detections processed: ${results.length}');
+      return results;
     } catch (e) {
       appLog('❌ HTTP Fetch Error: $e');
+      return [];
     }
-
-    return [];
   }
 }
 

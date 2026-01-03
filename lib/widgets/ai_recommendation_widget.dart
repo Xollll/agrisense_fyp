@@ -33,6 +33,10 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
   String _geminiText = "";
   bool _isLoadingAI = false;
 
+  // Selected disease label for AI requests when multiple diseases are detected.
+  // null means "All detected diseases".
+  String? _selectedDiseaseLabel;
+
   @override
   void didUpdateWidget(AIRecommendationWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -76,18 +80,33 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
       return;
     }
 
-    final detectionsToAnalyze = widget.currentDetections.isNotEmpty
+    // Use current detections if available, otherwise fall back to the persistent one.
+    final baseDetections = widget.currentDetections.isNotEmpty
         ? widget.currentDetections
         : [widget.lastDetectionPersistent!];
+
+    // Filter out healthy for AI tips.
+    final diseaseDetections = baseDetections
+        .where((d) => !_isHealthyLabel(d.label))
+        .toList();
+
+    // If user selected a specific disease, only analyze that disease.
+    final detectionsToAnalyze = (_selectedDiseaseLabel == null)
+        ? diseaseDetections
+        : diseaseDetections
+            .where((d) => d.label == _selectedDiseaseLabel)
+            .toList();
+
+    if (detectionsToAnalyze.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No disease selected to analyze.")),
+      );
+      return;
+    }
 
     setState(() => _isLoadingAI = true);
 
     try {
-      // User triggered = FORCE REFRESH (ignore cache)
-      // Hybrid system will:
-      // 1. Build smart cache key (disease names + rounded confidence)
-      // 2. Detect if anything changed significantly
-      // 3. If forceRefresh=true, always generate fresh
       final ai = await GeminiService.generateMultipleRecommendation(
         detectionsToAnalyze,
         forceRefresh: true, // User explicitly asked for tips
@@ -98,7 +117,7 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
         try {
           final supabase = SupabaseService();
           await supabase.saveDetection(
-            label: widget.lastDetectionPersistent!.label,
+            label: (_selectedDiseaseLabel ?? widget.lastDetectionPersistent!.label),
             confidence: widget.lastDetectionPersistent!.confidence,
             solution: ai,
             timestamp: DateTime.now().toIso8601String(),
@@ -135,6 +154,19 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
     final hasDetection = widget.lastDetectionPersistent != null;
     final isHealthy = hasDetection && _isHealthyLabel(widget.lastDetectionPersistent!.label);
     final isDisease = hasDetection && !isHealthy;
+
+    // Build unique disease labels for selector.
+    final uniqueDiseaseLabels = widget.currentDetections
+        .where((d) => !_isHealthyLabel(d.label))
+        .map((d) => d.label)
+        .toSet()
+        .toList();
+
+    // Keep selection valid when detections change.
+    if (_selectedDiseaseLabel != null &&
+        !uniqueDiseaseLabels.contains(_selectedDiseaseLabel)) {
+      _selectedDiseaseLabel = null;
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,6 +369,52 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
                       const SizedBox(height: 16),
                     ],
                   ),
+
+                // When multiple diseases are detected, let user choose which one to ask AI about.
+                if (isDisease && uniqueDiseaseLabels.length > 1) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.filter_alt, size: 18, color: Colors.orange.shade700),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String?>(
+                              isExpanded: true,
+                              value: _selectedDiseaseLabel,
+                              hint: const Text('All detected diseases'),
+                              items: <DropdownMenuItem<String?>>[
+                                const DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text('All detected diseases'),
+                                ),
+                                ...uniqueDiseaseLabels.map(
+                                  (label) => DropdownMenuItem<String?>(
+                                    value: label,
+                                    child: Text(label),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedDiseaseLabel = value;
+                                  _geminiText = ""; // Clear old result when target changes
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
 
                 // Action button - only show for diseases, not for healthy leaves or no detection
                 if (isDisease)

@@ -66,7 +66,8 @@ class SupabaseService {
       final res = await _client
           .from('detections')
           .select()
-          .order('timestamp', ascending: false);
+          .order('timestamp', ascending: false)
+          .timeout(const Duration(seconds: 8));
 
       // res is typically a List<dynamic>
       final data = res as List<dynamic>? ?? [];
@@ -91,7 +92,6 @@ class SupabaseService {
       }).toList();
     } catch (e) {
       appLog('SupabaseService.getDetectionHistory error: $e');
-      appLog('Stack trace: ${StackTrace.current}');
       return [];
     }
   }

@@ -75,7 +75,6 @@ void main() async {
   detectionManager.setNotificationProvider(notificationProvider);
   detectionManager.startPolling(
     const Duration(seconds: 10),
-    appSettings, // Pass settings to manager
   );
   appLog('✅ Detection polling started');
 
@@ -424,14 +423,21 @@ class _DashboardPageState extends State<DashboardPage> {
 
   late GlobalKey _aiRecommendationWidgetKey;
 
+  // Debounce UI updates to avoid jitter/jumping when backend spams similar results.
+  String _lastDetectionsSignature = '';
+  DateTime _lastUiUpdateAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  // Prevent overlapping detection fetches (common on slow networks).
+  bool _isFetchingDetections = false;
+
   @override
   void initState() {
     super.initState();
     _aiRecommendationWidgetKey = GlobalKey();
     
-    // Detection polling (unchanged)
+    // Detection polling (tuned for stability on slower networks)
     _detectionTimer = Timer.periodic(
-      const Duration(milliseconds: 700),
+      const Duration(milliseconds: 1500),
       (_) => _fetchDetections(),
     );
     
@@ -499,19 +505,65 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  Future<void> _fetchDetections() async {
-    final data = await DetectionService.fetchDetections();
+  String _buildDetectionsSignature(List<NormalizedDetection> detections) {
+    // Keep it stable: sort by label then confidence, and round confidence to 2 decimals.
+    final parts = detections
+        .map((d) => {
+              'label': d.label.toLowerCase().trim(),
+              'conf': (d.confidence * 100).round(), // integer % signature
+            })
+        .toList();
 
-    setState(() {
-      _currentDetections = data;
-
-      if (data.isNotEmpty) {
-        _lastDetectionPersistent = data.first;
-        _isCurrentlyDetected = true;
-      } else {
-        _isCurrentlyDetected = false;
-      }
+    parts.sort((a, b) {
+      final c = (a['label'] as String).compareTo(b['label'] as String);
+      if (c != 0) return c;
+      return (a['conf'] as int).compareTo(b['conf'] as int);
     });
+
+    return parts.map((e) => '${e['label']}:${e['conf']}').join('|');
+  }
+
+  Future<void> _fetchDetections() async {
+    if (_isFetchingDetections) return;
+    _isFetchingDetections = true;
+
+    try {
+      final data = await DetectionService.fetchDetections();
+
+      // Treat "healthy" as non-disease for the purpose of the detected-state.
+      final diseaseDetections = data
+          .where((d) => d.label.toLowerCase().trim() != 'healthy')
+          .toList();
+
+      // Debounce: only update UI if something meaningfully changed, or after a short interval.
+      final signature = _buildDetectionsSignature(data);
+      final now = DateTime.now();
+      final timeSinceLastUpdate = now.difference(_lastUiUpdateAt);
+
+      // Update at most ~3 times a second unless the signature changes.
+      final shouldUpdate = signature != _lastDetectionsSignature ||
+          timeSinceLastUpdate >= const Duration(milliseconds: 350);
+
+      if (!shouldUpdate || !mounted) return;
+
+      _lastDetectionsSignature = signature;
+      _lastUiUpdateAt = now;
+
+      setState(() {
+        // Always store the full list for the UI (LiveStreamWidget + AI widget).
+        _currentDetections = data;
+
+        // Consider "currently detected" only when there is at least one disease.
+        _isCurrentlyDetected = diseaseDetections.isNotEmpty;
+
+        // Keep a persistent *disease* detection (not healthy) for AI/history context.
+        if (diseaseDetections.isNotEmpty) {
+          _lastDetectionPersistent = diseaseDetections.first;
+        }
+      });
+    } finally {
+      _isFetchingDetections = false;
+    }
 
     // ✅ ANTI-REDUNDANCY: Do NOT auto-trigger recommendations
     // Only user-triggered actions (button clicks) should call Gemini API

@@ -8,7 +8,6 @@
 import 'dart:async';
 import '../detection_service.dart';
 import 'notification_service.dart';
-import '../providers/app_settings_provider.dart';
 import '../providers/notification_provider.dart';
 
 class DetectionManager {
@@ -16,7 +15,6 @@ class DetectionManager {
   NotificationProvider? _notificationProvider;
 
   bool _isProcessing = false;
-  AppSettingsProvider? _settings;
 
   // Set notification provider for in-app notifications
   void setNotificationProvider(NotificationProvider provider) {
@@ -24,8 +22,7 @@ class DetectionManager {
   }
 
   // Start polling using the provided interval (fixed)
-  void startPolling(Duration interval, [AppSettingsProvider? settings]) {
-    _settings = settings;
+  void startPolling(Duration interval) {
     if (_timer != null) return;
 
     _timer = Timer.periodic(interval, (_) => _pollOnce());
@@ -40,11 +37,6 @@ class DetectionManager {
   Future<void> _pollOnce() async {
     if (_isProcessing) return;
 
-    // ✅ Check if live updates are enabled in settings
-    if (_settings != null && !_settings!.liveUpdatesEnabled) {
-      return;
-    }
-
     _isProcessing = true;
 
     try {
@@ -57,14 +49,6 @@ class DetectionManager {
 
       // 2️⃣ Skip low confidence
       if (detection.confidence <= 0.01) {
-        return;
-      }
-
-      // ✅ Respect notification setting
-      final notificationsAllowed =
-          _settings == null ? true : _settings!.notificationsEnabled;
-
-      if (!notificationsAllowed) {
         return;
       }
 

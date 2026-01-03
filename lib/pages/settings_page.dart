@@ -32,62 +32,6 @@ class SettingsPage extends StatelessWidget {
                 _buildStatusOverviewCard(context, appSettings, isDarkMode),
                 const SizedBox(height: 24),
 
-                // Live Detection Section
-                _buildSectionHeader(context, "Live Detection", Icons.sensors),
-                const SizedBox(height: 12),
-                _buildEnhancedSettingCard(
-                  context,
-                  title: "Live Updates",
-                  subtitle: appSettings.liveUpdatesEnabled 
-                      ? "Real-time detection active" 
-                      : "Detection paused",
-                  icon: Icons.play_circle_rounded,
-                  iconColor: const Color(0xFF10B981),
-                  isToggle: true,
-                  value: appSettings.liveUpdatesEnabled,
-                  onChanged: (value) async {
-                    HapticFeedback.mediumImpact();
-                    await appSettings.toggleLiveUpdates(value);
-                    if (context.mounted) {
-                      _showStyledSnackBar(
-                        context,
-                        value ? '▶️ Live detection started' : '⏸️ Live detection paused',
-                        value ? const Color(0xFF10B981) : Colors.orange,
-                      );
-                    }
-                  },
-                  isDarkMode: isDarkMode,
-                ),
-                const SizedBox(height: 24),
-
-                // Notifications Section
-                _buildSectionHeader(context, "Notifications", Icons.notifications_active),
-                const SizedBox(height: 12),
-                _buildEnhancedSettingCard(
-                  context,
-                  title: "Disease Alerts",
-                  subtitle: appSettings.notificationsEnabled
-                      ? "You'll be notified of diseases"
-                      : "Notifications are off",
-                  icon: Icons.notifications_active_rounded,
-                  iconColor: const Color(0xFFF59E0B),
-                  isToggle: true,
-                  value: appSettings.notificationsEnabled,
-                  onChanged: (value) async {
-                    HapticFeedback.mediumImpact();
-                    await appSettings.toggleNotifications(value);
-                    if (context.mounted) {
-                      _showStyledSnackBar(
-                        context,
-                        value ? '🔔 Alerts enabled' : '🔕 Alerts disabled',
-                        value ? const Color(0xFFF59E0B) : Colors.grey,
-                      );
-                    }
-                  },
-                  isDarkMode: isDarkMode,
-                ),
-                const SizedBox(height: 24),
-
                 // Data & Storage Section
                 _buildSectionHeader(context, "Data & Storage", Icons.storage),
                 const SizedBox(height: 12),
@@ -222,14 +166,10 @@ class SettingsPage extends StatelessWidget {
               Expanded(
                 child: _buildStatusItem(
                   context,
-                  icon: appSettings.liveUpdatesEnabled 
-                      ? Icons.check_circle 
-                      : Icons.pause_circle,
-                  label: 'Live Updates',
-                  value: appSettings.liveUpdatesEnabled ? 'Active' : 'Paused',
-                  color: appSettings.liveUpdatesEnabled 
-                      ? const Color(0xFF10B981) 
-                      : Colors.orange,
+                  icon: Icons.check_circle,
+                  label: 'Monitoring',
+                  value: 'Active',
+                  color: const Color(0xFF10B981),
                 ),
               ),
               Container(
@@ -240,7 +180,7 @@ class SettingsPage extends StatelessWidget {
                   gradient: LinearGradient(
                     colors: [
                       Colors.transparent,
-                      Colors.grey.shade300,
+                      Colors.grey,
                       Colors.transparent,
                     ],
                     begin: Alignment.topCenter,
@@ -251,14 +191,10 @@ class SettingsPage extends StatelessWidget {
               Expanded(
                 child: _buildStatusItem(
                   context,
-                  icon: appSettings.notificationsEnabled 
-                      ? Icons.notifications_active 
-                      : Icons.notifications_off,
+                  icon: Icons.notifications_active,
                   label: 'Alerts',
-                  value: appSettings.notificationsEnabled ? 'On' : 'Off',
-                  color: appSettings.notificationsEnabled 
-                      ? const Color(0xFFF59E0B) 
-                      : Colors.grey,
+                  value: 'On',
+                  color: const Color(0xFFF59E0B),
                 ),
               ),
             ],

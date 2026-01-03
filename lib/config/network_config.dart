@@ -4,7 +4,7 @@
 /// Prevents app from hanging indefinitely on network issues
 class NetworkConfig {
   // Detection server timeouts
-  static const Duration detectionFetchTimeout = Duration(seconds: 10);
+  static const Duration detectionFetchTimeout = Duration(seconds: 15);
   static const Duration detectionStreamTimeout = Duration(seconds: 15);
 
   // AI API timeouts

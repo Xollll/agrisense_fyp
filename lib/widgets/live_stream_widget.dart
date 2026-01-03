@@ -84,6 +84,34 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Filter out "healthy" detections for the disease list.
+    // If everything is healthy, we still want to show the empty/healthy UI.
+    final diseaseDetections = widget.detections
+        .where((d) => d.label.toLowerCase().trim() != 'healthy')
+        .toList();
+
+    // Group detections by label to avoid UI spam/jitter when the same disease is detected repeatedly.
+    // For each label, keep count + max confidence.
+    final Map<String, _GroupedDetection> grouped = {};
+    for (final d in diseaseDetections) {
+      final label = d.label.trim();
+      final existing = grouped[label];
+      if (existing == null) {
+        grouped[label] = _GroupedDetection(label: label, count: 1, maxConfidence: d.confidence);
+      } else {
+        grouped[label] = _GroupedDetection(
+          label: label,
+          count: existing.count + 1,
+          maxConfidence: d.confidence > existing.maxConfidence
+              ? d.confidence
+              : existing.maxConfidence,
+        );
+      }
+    }
+
+    final groupedList = grouped.values.toList()
+      ..sort((a, b) => b.maxConfidence.compareTo(a.maxConfidence));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -159,8 +187,8 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
               ),
               const SizedBox(height: 14),
 
-              // DETECTIONS LIST
-              widget.detections.isEmpty
+              // DETECTIONS LIST (fixed height to prevent layout jumping)
+              groupedList.isEmpty
                   ? Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 30),
@@ -173,80 +201,96 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              "No diseases detected",
+                              'No diseases detected',
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              "Your plants look healthy!",
+                              'Your plants look healthy!',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
                         ),
                       ),
                     )
-                  : Column(
-                      children: widget.detections
-                          .where((d) => d.label.toLowerCase() != "healthy")
-                          .map(
-                            (d) => Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        d.label,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 16,
+                  : SizedBox(
+                      height: 160, // Keep this constant so AI section doesn't jump
+                      child: Scrollbar(
+                        thumbVisibility: true,
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Column(
+                            children: groupedList.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final g = entry.value;
+
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: index < groupedList.length - 1 ? 16 : 0,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            g.count > 1 ? '${g.label} (x${g.count})' : g.label,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 16,
+                                                ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.warning.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: AppColors.warning.withOpacity(0.3),
                                             ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.warning.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color: AppColors.warning.withOpacity(0.3),
+                                          ),
+                                          child: Text(
+                                            '${(g.maxConfidence * 100).toStringAsFixed(0)}%',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.warning,
+                                            ),
                                           ),
                                         ),
-                                        child: Text(
-                                          "${(d.confidence * 100).toStringAsFixed(0)}%",
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.warning,
-                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: LinearProgressIndicator(
+                                        value: g.maxConfidence,
+                                        minHeight: 6,
+                                        backgroundColor:
+                                            AppColors.warning.withOpacity(0.15),
+                                        valueColor:
+                                            const AlwaysStoppedAnimation<Color>(
+                                          AppColors.warning,
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(6),
-                                    child: LinearProgressIndicator(
-                                      value: d.confidence,
-                                      minHeight: 6,
-                                      backgroundColor: AppColors.warning.withOpacity(0.15),
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        AppColors.warning,
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                          .toList(),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
                     ),
             ],
           ),
@@ -254,4 +298,16 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
       ],
     );
   }
+}
+
+class _GroupedDetection {
+  final String label;
+  final int count;
+  final double maxConfidence;
+
+  const _GroupedDetection({
+    required this.label,
+    required this.count,
+    required this.maxConfidence,
+  });
 }
