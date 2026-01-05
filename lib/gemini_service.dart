@@ -145,23 +145,39 @@ class GeminiService {
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey",
       );
 
-      final prompt = """You are an agricultural AI assistant for a chili farm health monitoring system.
+      final prompt = """You are AgriSense, an agricultural assistant for chili farmers.
 
-Detections found:
+Input:
 $diseaseList
 
-You are an AI assistant for chili farmers.
-List unique detected diseases (ignore healthy).
-Give 1 short explanation sentence.
-Give 2–3 very short, practical farming actions in bullet points.
-Use simple farming language. Keep it brief. """;
+TASK
+Write a short recommendation.
 
-      final body = jsonEncode(
-          {"contents": [
-            {
-              "parts": [{"text": prompt}]
-            }
-          ]});
+OUTPUT FORMAT (follow exactly)
+Diseases: <comma-separated disease names>
+Why: <1 short sentence>
+Actions:
+- <action 1>
+- <action 2>
+- <optional action 3>
+
+RULES
+- Use ONLY the diseases in Input. Ignore healthy.
+- Keep total under 70 words.
+- Use simple farming language.
+- Actions must be practical and specific (what to do now).
+- No extra headings, no emojis, no disclaimers.
+""";
+
+      final body = jsonEncode({
+        "contents": [
+          {
+            "parts": [
+              {"text": prompt}
+            ]
+          }
+        ]
+      });
 
       // ✅ Create future for this request and mark it as pending
       // This prevents duplicate API calls if same request is made again
@@ -208,8 +224,7 @@ Use simple farming language. Keep it brief. """;
         return "Unable to generate valid recommendation. Please try again.";
       }
 
-      final sanitized =
-          ValidationService.sanitizeAIResponse(recommendation);
+      final sanitized = ValidationService.sanitizeAIResponse(recommendation);
 
       // Store validated response in cache for future use
       _recommendationCache[smartCacheKey] = sanitized;

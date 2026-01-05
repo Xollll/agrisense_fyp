@@ -100,15 +100,17 @@ class SupabaseService {
   ///
   /// WARNING: This is a destructive operation. In a multi-user setup, this would
   /// delete history for everyone unless scoped (e.g., by user_id/device_id).
-  Future<bool> deleteAllDetections() async {
+  Future<void> deleteAllDetections() async {
     try {
-      appLog('Deleting all detections from Supabase...');
+      // ⚠️ WARNING: This deletes ALL rows in the table for the current project.
+      // This is intended for anon/no-auth setups with permissive RLS policies.
+      // PostgREST requires at least one filter for delete operations.
       await _client.from('detections').delete().neq('id', -1);
-      appLog('All detections deleted successfully');
-      return true;
     } catch (e) {
-      appLog('SupabaseService.deleteAllDetections error: $e');
-      return false;
+      throw Exception(
+        'Failed to delete cloud history.\n'
+        'Details: $e',
+      );
     }
   }
 

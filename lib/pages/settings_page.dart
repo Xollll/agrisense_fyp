@@ -386,17 +386,95 @@ class SettingsPage extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               HapticFeedback.heavyImpact();
+
+              // Capture messenger before popping the dialog so we can show snackbars reliably.
+              final messenger = ScaffoldMessenger.of(context);
+
               Navigator.pop(context);
 
-              final ok = await SupabaseService().deleteAllDetections();
+              try {
+                await SupabaseService().deleteAllDetections();
 
-              if (context.mounted) {
-                _showStyledSnackBar(
-                  context,
-                  ok
-                      ? '☁️🗑️ Cloud history deleted'
-                      : '⚠️ Failed to delete cloud history',
-                  ok ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                messenger
+                  ..hideCurrentSnackBar()
+                  ..clearSnackBars();
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            '☁️🗑️ Cloud history deleted',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: const Color(0xFF10B981),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    margin: const EdgeInsets.all(16),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              } catch (e) {
+                messenger
+                  ..hideCurrentSnackBar()
+                  ..clearSnackBars();
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            '⚠️ Failed to delete cloud history',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: const Color(0xFFEF4444),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    margin: const EdgeInsets.all(16),
+                    duration: const Duration(seconds: 2),
+                  ),
                 );
               }
             },
