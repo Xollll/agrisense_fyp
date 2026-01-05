@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import '../widgets/enhanced_app_bar.dart';
-import '../providers/app_settings_provider.dart';
 import '../services/local_cache_service.dart';
+import '../services/supabase_service.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final appSettings = Provider.of<AppSettingsProvider>(context);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -28,31 +26,39 @@ class SettingsPage extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 140),
               children: [
-                // Status Overview Card
-                _buildStatusOverviewCard(context, appSettings, isDarkMode),
-                const SizedBox(height: 24),
+                
 
                 // Data & Storage Section
-                _buildSectionHeader(context, "Data & Storage", Icons.storage),
+                _buildSectionHeader(context, 'Data & Storage', Icons.storage),
                 const SizedBox(height: 12),
                 _buildEnhancedSettingCard(
                   context,
-                  title: "Clear Cache",
-                  subtitle: "Free up storage space",
+                  title: 'Clear Local Cache',
+                  subtitle: 'Removes offline cached data only',
                   icon: Icons.cleaning_services_rounded,
                   iconColor: const Color(0xFFEF4444),
                   onTap: () => _showClearCacheDialog(context),
                   isDarkMode: isDarkMode,
                 ),
-                const SizedBox(height: 24),
-
-                // About Section
-                _buildSectionHeader(context, "About", Icons.info),
                 const SizedBox(height: 12),
                 _buildEnhancedSettingCard(
                   context,
-                  title: "App Version",
-                  subtitle: "1.0.0 (Build 2024)",
+                  title: 'Delete Cloud History',
+                  subtitle: 'Deletes detection history from Supabase',
+                  icon: Icons.cloud_off_rounded,
+                  iconColor: const Color(0xFFDC2626),
+                  onTap: () => _showDeleteCloudHistoryDialog(context),
+                  isDarkMode: isDarkMode,
+                ),
+                const SizedBox(height: 24),
+
+                // About Section
+                _buildSectionHeader(context, 'About', Icons.info),
+                const SizedBox(height: 12),
+                _buildEnhancedSettingCard(
+                  context,
+                  title: 'App Version',
+                  subtitle: '1.0.0 (Build 2024)',
                   icon: Icons.info_rounded,
                   iconColor: const Color(0xFF06B6D4),
                   onTap: () => _showAboutDialog(context),
@@ -61,8 +67,8 @@ class SettingsPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 _buildEnhancedSettingCard(
                   context,
-                  title: "Privacy Policy",
-                  subtitle: "View our privacy policy",
+                  title: 'Privacy Policy',
+                  subtitle: 'View our privacy policy',
                   icon: Icons.privacy_tip_rounded,
                   iconColor: const Color(0xFF8B5CF6),
                   onTap: () => _showPrivacyPolicyDialog(context),
@@ -71,8 +77,8 @@ class SettingsPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 _buildEnhancedSettingCard(
                   context,
-                  title: "Help & Support",
-                  subtitle: "Get help or send feedback",
+                  title: 'Help & Support',
+                  subtitle: 'Get help or send feedback',
                   icon: Icons.help_rounded,
                   iconColor: const Color(0xFF10B981),
                   onTap: () => _showHelpSupportDialog(context),
@@ -88,159 +94,8 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusOverviewCard(
-    BuildContext context, 
-    AppSettingsProvider appSettings,
-    bool isDarkMode,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF10B981).withOpacity(0.15),
-            const Color(0xFF059669).withOpacity(0.08),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF10B981).withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF10B981), Color(0xFF059669)],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF10B981).withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.eco,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Plant Health Monitor',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF10B981),
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Keep your plants healthy',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatusItem(
-                  context,
-                  icon: Icons.check_circle,
-                  label: 'Monitoring',
-                  value: 'Active',
-                  color: const Color(0xFF10B981),
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 40,
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      Colors.grey,
-                      Colors.transparent,
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: _buildStatusItem(
-                  context,
-                  icon: Icons.notifications_active,
-                  label: 'Alerts',
-                  value: 'On',
-                  color: const Color(0xFFF59E0B),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  
 
-  Widget _buildStatusItem(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey.shade600,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
     return Row(
@@ -486,6 +341,73 @@ class SettingsPage extends StatelessWidget {
               ),
             ),
             child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteCloudHistoryDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDC2626).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.cloud_off_rounded,
+                color: Color(0xFFDC2626),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text('Delete Cloud History'),
+          ],
+        ),
+        content: const Text(
+          'This will permanently delete ALL detection history stored in Supabase. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              HapticFeedback.heavyImpact();
+              Navigator.pop(context);
+
+              final ok = await SupabaseService().deleteAllDetections();
+
+              if (context.mounted) {
+                _showStyledSnackBar(
+                  context,
+                  ok
+                      ? '☁️🗑️ Cloud history deleted'
+                      : '⚠️ Failed to delete cloud history',
+                  ok ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Delete All'),
           ),
         ],
       ),

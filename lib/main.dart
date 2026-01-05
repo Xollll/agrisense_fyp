@@ -14,7 +14,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/detection_manager.dart';
 import 'services/local_cache_service.dart';
 import 'services/sync_service.dart';
-import 'providers/app_settings_provider.dart';
 import 'providers/statistics_provider.dart';
 import 'providers/notification_provider.dart';
 import 'widgets/live_stream_widget.dart';
@@ -61,11 +60,6 @@ void main() async {
   await syncService.initialize();
   appLog('✅ Sync service initialized');
 
-  // ✅ PHASE 1: Initialize app settings
-  final appSettings = AppSettingsProvider();
-  await appSettings.initialize();
-  appLog('✅ App settings initialized');
-
   // Initialize notification provider
   final notificationProvider = NotificationProvider();
   appLog('✅ Notification provider initialized');
@@ -83,9 +77,6 @@ void main() async {
       providers: [
         ChangeNotifierProvider(
           create: (_) => ThemeProvider()..toggleTheme(savedTheme == ThemeMode.dark),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => appSettings,
         ),
         ChangeNotifierProvider(
           create: (_) => StatisticsProvider(),

@@ -95,4 +95,35 @@ class SupabaseService {
       return [];
     }
   }
+
+  /// Delete ALL detection history from the `detections` table.
+  ///
+  /// WARNING: This is a destructive operation. In a multi-user setup, this would
+  /// delete history for everyone unless scoped (e.g., by user_id/device_id).
+  Future<bool> deleteAllDetections() async {
+    try {
+      appLog('Deleting all detections from Supabase...');
+      await _client.from('detections').delete().neq('id', -1);
+      appLog('All detections deleted successfully');
+      return true;
+    } catch (e) {
+      appLog('SupabaseService.deleteAllDetections error: $e');
+      return false;
+    }
+  }
+
+  /// Delete selected detections by their numeric ids.
+  Future<bool> deleteDetectionsByIds(List<int> ids) async {
+    if (ids.isEmpty) return true;
+
+    try {
+      appLog('Deleting ${ids.length} detections from Supabase...');
+      await _client.from('detections').delete().inFilter('id', ids);
+      appLog('Selected detections deleted successfully');
+      return true;
+    } catch (e) {
+      appLog('SupabaseService.deleteDetectionsByIds error: $e');
+      return false;
+    }
+  }
 }

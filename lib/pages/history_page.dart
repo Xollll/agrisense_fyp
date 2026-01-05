@@ -81,11 +81,30 @@ String _getSeverityStory(String label, SeverityType severity) {
 }
 
 /// Returns the DIAGNOSIS CONFIDENCE color (how sure the model is)
-Color _getDiagnosisConfidenceColor(double confidence) {
-  if (confidence >= 0.8) return const Color(0xFF06B6D4); // Strong confidence
-  if (confidence >= 0.6) return const Color(0xFF0EA5E9); // Moderate confidence
-  if (confidence >= 0.4) return const Color(0xFFF59E0B); // Weak confidence
-  return const Color(0xFFEF4444); // Very weak confidence
+///
+/// NOTE:
+/// Users were interpreting this color as a "risk" indicator.
+/// To keep UI consistent with the Severity badge (Low=green, Warning=yellow, Critical=red),
+/// this now maps confidence colors to the same thresholds used by [classifySeverity].
+Color _getDiagnosisConfidenceColor(double confidence, {String? label}) {
+  // Keep explicit "healthy" always green.
+  if (label != null) {
+    final normalized = label.toLowerCase().trim();
+    if (normalized == 'healthy' || normalized == 'normal' || normalized == 'good') {
+      return const Color(0xFF10B981); // Green
+    }
+  }
+
+  // Match severity thresholds:
+  // <0.50 => Low Risk (green)
+  // 0.50-0.79 => Warning (yellow)
+  // >=0.80 => Critical (red)
+  if (confidence >= 0.80) return const Color(0xFFDC2626); // Red
+  if (confidence >= 0.50) return const Color(0xFFF59E0B); // Yellow/Amber
+  if (confidence >= 0.0) return const Color(0xFF10B981); // Green
+
+  // Fallback (shouldn't normally happen)
+  return const Color(0xFFF59E0B); // Orange
 }
 
 /// Returns the HEALTH STATUS based on label
@@ -686,10 +705,12 @@ class _DetectionCard extends StatelessWidget {
     final severityColor = _getSeverityColor(severity);
     final severityLabel = _getSeverityLabel(severity);
     final storyText = _getSeverityStory(label, severity);
-    
-    final diagnosisConfidenceColor = _getDiagnosisConfidenceColor(confidence);
+
+    final diagnosisConfidenceColor =
+        _getDiagnosisConfidenceColor(confidence, label: label);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final formattedDate = timestamp.contains("T") ? timestamp.split("T").first : timestamp;
+    final formattedDate =
+        timestamp.contains("T") ? timestamp.split("T").first : timestamp;
     final truncatedSolution = _getTruncatedSolution(solution);
 
     return GestureDetector(
@@ -788,7 +809,7 @@ class _DetectionCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Diagnosis Confidence',
+                          'Prediction Confidence',
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -812,8 +833,18 @@ class _DetectionCard extends StatelessWidget {
                         value: confidence,
                         minHeight: 6,
                         backgroundColor: Colors.grey.shade300,
-                        valueColor: AlwaysStoppedAnimation<Color>(diagnosisConfidenceColor),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(diagnosisConfidenceColor),
                       ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'How sure the AI is about the label (not disease severity).',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Colors.grey,
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                          ),
                     ),
                   ],
                 ),
@@ -972,12 +1003,14 @@ class _DetectionCard extends StatelessWidget {
     final severityColor = _getSeverityColor(severity);
     final severityLabel = _getSeverityLabel(severity);
     final storyText = _getSeverityStory(label, severity);
-    
+
     final healthStatusColor = _getHealthStatusColor(label);
     final healthStatus = _getHealthStatusLabel(label);
-    final diagnosisConfidenceColor = _getDiagnosisConfidenceColor(confidence);
+    final diagnosisConfidenceColor =
+        _getDiagnosisConfidenceColor(confidence, label: label);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final formattedDate = timestamp.contains("T") ? timestamp.split("T").first : timestamp;
+    final formattedDate =
+        timestamp.contains("T") ? timestamp.split("T").first : timestamp;
 
     showModalBottomSheet(
       context: context,
@@ -1160,7 +1193,7 @@ class _DetectionCard extends StatelessWidget {
 
                 // Diagnosis Confidence section
                 Text(
-                  'Diagnosis Confidence',
+                  'Prediction Confidence',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -1176,13 +1209,15 @@ class _DetectionCard extends StatelessWidget {
                           value: confidence,
                           minHeight: 10,
                           backgroundColor: Colors.grey.shade300,
-                          valueColor: AlwaysStoppedAnimation<Color>(diagnosisConfidenceColor),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(diagnosisConfidenceColor),
                         ),
                       ),
                     ),
                     const SizedBox(width: 16),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: diagnosisConfidenceColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -1200,7 +1235,7 @@ class _DetectionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'How confident the AI model is in this diagnosis',
+                  'How sure the AI is about this label (not disease severity).',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: Colors.grey,
                         fontStyle: FontStyle.italic,
