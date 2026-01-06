@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../widgets/enhanced_app_bar.dart';
-import '../services/local_cache_service.dart';
 import '../services/supabase_service.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -26,20 +25,8 @@ class SettingsPage extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 140),
               children: [
-                
-
                 // Data & Storage Section
                 _buildSectionHeader(context, 'Data & Storage', Icons.storage),
-                const SizedBox(height: 12),
-                _buildEnhancedSettingCard(
-                  context,
-                  title: 'Clear Local Cache',
-                  subtitle: 'Removes offline cached data only',
-                  icon: Icons.cleaning_services_rounded,
-                  iconColor: const Color(0xFFEF4444),
-                  onTap: () => _showClearCacheDialog(context),
-                  isDarkMode: isDarkMode,
-                ),
                 const SizedBox(height: 12),
                 _buildEnhancedSettingCard(
                   context,
@@ -93,9 +80,6 @@ class SettingsPage extends StatelessWidget {
       ),
     );
   }
-
-  
-
 
   Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
     return Row(
@@ -236,113 +220,6 @@ class SettingsPage extends StatelessWidget {
               ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showStyledSnackBar(BuildContext context, String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                Icons.check,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _showClearCacheDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.cleaning_services_rounded,
-                color: Color(0xFFEF4444),
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text('Clear Cache'),
-          ],
-        ),
-        content: const Text(
-          'This will remove all cached data including detection history. This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              HapticFeedback.mediumImpact();
-              Navigator.pop(context);
-
-              final ok = await LocalCacheService.clearAllCache();
-
-              if (context.mounted) {
-                _showStyledSnackBar(
-                  context,
-                  ok
-                      ? '🗑️ Cache cleared successfully'
-                      : '⚠️ Failed to clear cache',
-                  ok ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Clear'),
-          ),
-        ],
       ),
     );
   }
@@ -532,7 +409,7 @@ class SettingsPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Version 1.0.0 (Build 2024)',
+              'Version 1.0.0 (Build 2025)',
               style: TextStyle(
                 color: Colors.grey.shade600,
                 fontSize: 14,
@@ -621,11 +498,11 @@ class SettingsPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '• Farm images are processed locally on your device\n• Detection results are stored securely\n• No personal data is shared with third parties\n• You can delete your data anytime',
+                'We use your data to provide and improve our services. By using AgriSense, you agree to our data usage policies.',
                 style: TextStyle(
                   color: Colors.grey.shade700,
                   fontSize: 13,
-                  height: 1.6,
+                  height: 1.5,
                 ),
               ),
               const SizedBox(height: 16),
@@ -637,13 +514,7 @@ class SettingsPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                'For privacy concerns, contact us at: privacy@agrisense.app',
-                style: TextStyle(
-                  color: Colors.grey.shade700,
-                  fontSize: 13,
-                ),
-              ),
+              
             ],
           ),
         ),
@@ -744,7 +615,7 @@ class SettingsPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Email: support@agrisense.app\nPhone: +1-800-AGRI-SENSE',
+                'Email: mzlkrnainn@gmail.com\nPhone: +60 199981189',
                 style: TextStyle(
                   color: Colors.grey.shade700,
                   fontSize: 13,

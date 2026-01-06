@@ -437,87 +437,96 @@ class _HistoryPageState extends State<HistoryPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Search Bar
-                  TextField(
-                    onChanged: (value) {
-                      setState(() => _searchQuery = value);
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search disease...',
-                      prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? GestureDetector(
-                              onTap: () => setState(() => _searchQuery = ''),
-                              child: Icon(Icons.clear, color: Colors.grey.shade600),
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  // Filter & Sort Row
+                  // Search Bar + Sort Button Row
                   Row(
                     children: [
-                      // Filter Chips
                       Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: ['All', 'Healthy', 'Low Risk', 'Warning', 'Critical']
-                                .map((filter) {
-                              final isSelected = _selectedFilter == filter;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: FilterChip(
-                                  label: Text(
-                                    filter,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
-                                      color: isSelected ? Colors.white : Colors.grey.shade700,
-                                    ),
-                                  ),
-                                  selected: isSelected,
-                                  onSelected: (selected) {
-                                    setState(() => _selectedFilter = filter);
-                                  },
-                                  backgroundColor: Colors.grey.shade200,
-                                  selectedColor: Theme.of(context).primaryColor,
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                ),
-                              );
-                            }).toList(),
+                        child: TextField(
+                          onChanged: (value) {
+                            setState(() => _searchQuery = value);
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search disease...',
+                            prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? GestureDetector(
+                                    onTap: () => setState(() => _searchQuery = ''),
+                                    child: Icon(Icons.clear, color: Colors.grey.shade600),
+                                  )
+                                : null,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
                         ),
                       ),
-                      // Sort Dropdown
-                      SizedBox(
-                        width: 110,
-                        child: DropdownButton<String>(
-                          value: _sortBy,
-                          isExpanded: true,
-                          underline: const SizedBox(),
-                          items: ['Newest', 'Oldest', 'Confidence']
-                              .map((sort) => DropdownMenuItem(
+                      const SizedBox(width: 12),
+                      // Sort Dropdown Button
+                      PopupMenuButton<String>(
+                        onSelected: (value) {
+                          setState(() => _sortBy = value);
+                        },
+                        itemBuilder: (BuildContext context) {
+                          return ['Newest', 'Oldest', 'Confidence']
+                              .map((sort) => PopupMenuItem(
                                     value: sort,
                                     child: Text(
                                       sort,
                                       style: const TextStyle(fontSize: 12),
                                     ),
                                   ))
-                              .toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() => _sortBy = value);
-                            }
-                          },
+                              .toList();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Tooltip(
+                            message: 'Sort: $_sortBy',
+                            child: Icon(
+                              Icons.sort,
+                              color: Theme.of(context).primaryColor,
+                              size: 22,
+                            ),
+                          ),
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 10),
+                  // Filter Chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: ['All', 'Healthy', 'Low Risk', 'Warning', 'Critical']
+                          .map((filter) {
+                        final isSelected = _selectedFilter == filter;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: FilterChip(
+                            label: Text(
+                              filter,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                color: isSelected ? Colors.white : Colors.grey.shade700,
+                              ),
+                            ),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() => _selectedFilter = filter);
+                            },
+                            backgroundColor: Colors.grey.shade200,
+                            selectedColor: Theme.of(context).primaryColor,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ],
               ),
