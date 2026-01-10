@@ -45,7 +45,7 @@ class SettingsPage extends StatelessWidget {
                 _buildEnhancedSettingCard(
                   context,
                   title: 'App Version',
-                  subtitle: '1.0.0 (Build 2024)',
+                  subtitle: '1.0.0 (Build 2025)',
                   icon: Icons.info_rounded,
                   iconColor: const Color(0xFF06B6D4),
                   onTap: () => _showAboutDialog(context),
@@ -506,26 +506,12 @@ class SettingsPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Contact Us',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 8),
               
             ],
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Close',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ),
+          
           ElevatedButton(
             onPressed: () => Navigator.pop(context),
             style: ElevatedButton.styleFrom(
