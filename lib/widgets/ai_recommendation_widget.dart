@@ -435,7 +435,7 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
                             )
                           : Icon(Icons.auto_awesome, color: Colors.orange.shade600),
                       label: Text(
-                        _isLoadingAI ? 'Getting Recommendation...' : 'Ask AI Again',
+                        _isLoadingAI ? 'Getting Recommendation...' : 'Get Recommendation',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
