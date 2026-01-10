@@ -3,9 +3,9 @@
 /// Network timeout configuration for all HTTP requests
 /// Prevents app from hanging indefinitely on network issues
 class NetworkConfig {
-  // Detection server timeouts
-  static const Duration detectionFetchTimeout = Duration(seconds: 15);
-  static const Duration detectionStreamTimeout = Duration(seconds: 15);
+  // Detection server timeouts (should be very fast even over internet)
+  static const Duration detectionFetchTimeout = Duration(seconds: 3); // Reduced from 5s
+  static const Duration detectionStreamTimeout = Duration(seconds: 3); // Reduced from 5s
 
   // AI API timeouts
   static const Duration geminiRequestTimeout = Duration(seconds: 30);
@@ -19,8 +19,8 @@ class NetworkConfig {
   static const Duration defaultTimeout = Duration(seconds: 15);
   static const Duration longOperationTimeout = Duration(seconds: 60);
 
-  // Retry configuration
-  static const int maxRetries = 3;
-  static const int initialBackoffMs = 500;
-  static const double backoffMultiplier = 2.0;
+  // Retry configuration - fail fast
+  static const int maxRetries = 1; // Reduced from 2 - retry only once
+  static const int initialBackoffMs = 200; // Reduced from 300ms - faster retry
+  static const double backoffMultiplier = 1.5; // Reduced from 2.0 - less exponential backoff
 }

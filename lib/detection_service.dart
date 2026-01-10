@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/http_retry_service.dart';
 import 'services/validation_service.dart';
-import 'config/network_config.dart';
 import 'utils/app_log.dart';
 
 class NormalizedDetection {
@@ -111,14 +110,14 @@ class DetectionService {
     try {
       // Get detection server URL from environment variables
       final serverUrl = dotenv.env['DETECTION_SERVER_URL'] ??
-          'http://192.168.8.6:5000';
+          'http://172.20.10.3:5000';
 
       appLog('🔍 Fetching detection from: $serverUrl/latest_detection');
 
-      // ✅ Use retry service with timeout
+      // ✅ Use very aggressive timeout for fast fail-over
       final response = await HttpRetryService.get(
         Uri.parse("$serverUrl/latest_detection"),
-      ).timeout(NetworkConfig.detectionFetchTimeout);
+      ).timeout(const Duration(seconds: 3)); // Total timeout: 3 seconds max
 
       if (response.statusCode != 200) {
         appLog('❌ Server error: ${response.statusCode}');

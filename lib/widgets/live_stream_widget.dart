@@ -4,6 +4,7 @@ import 'mjpeg_stream.dart';
 import 'modern_card.dart';
 import '../theme/app_theme.dart';
 import 'animated_live_indicator.dart';
+import '../utils/app_log.dart';
 
 // =============================================================
 // LIVE STREAM WIDGET
@@ -58,11 +59,17 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
   @override
   void didUpdateWidget(LiveStreamWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Reset to disconnected when stream URL changes
+    
+    // Reset to disconnected when stream URL changes (including when set to empty)
     if (oldWidget.streamUrl != widget.streamUrl) {
       setState(() {
         _liveStatus = LiveStatus.disconnected;
       });
+      
+      // If URL is now empty, it's likely a forced disconnect
+      if (widget.streamUrl.isEmpty) {
+        appLog('📺 Stream URL cleared - waiting for reconnection...');
+      }
     }
   }
 

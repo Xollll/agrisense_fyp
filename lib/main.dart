@@ -163,7 +163,7 @@ class MainWrapper extends StatefulWidget {
   State<MainWrapper> createState() => _MainWrapperState();
 }
 
-class _MainWrapperState extends State<MainWrapper> {
+class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
   int _selectedIndex = 0;
 
   final List<NavigationItem> _navItems = [
@@ -192,6 +192,35 @@ class _MainWrapperState extends State<MainWrapper> {
       page: const SettingsPage(),
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App resumed after being backgrounded or after device unlock
+      appLog('📱 App resumed - forcing stream restart for fresh connection...');
+      
+      // Force a rebuild of the current page to reset stream connections
+      if (mounted) {
+        setState(() {
+          // This causes the page to rebuild with fresh widgets
+        });
+      }
+    } else if (state == AppLifecycleState.paused) {
+      appLog('📱 App paused');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -403,14 +432,14 @@ class DashboardPage extends StatefulWidget {
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> {
+class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserver {
   List<NormalizedDetection> _currentDetections = [];
   NormalizedDetection? _lastDetectionPersistent;
   bool _isCurrentlyDetected = false;
   Timer? _detectionTimer;
   Timer? _serverCheckTimer;
   bool _isServerOnline = false;
-  String _streamUrl = "${dotenv.env['DETECTION_SERVER_URL'] ?? 'http://172.20.10.2:5000'}/video_feed";
+  String _streamUrl = "${dotenv.env['DETECTION_SERVER_URL'] ?? 'http://172.20.10.3:5000'}/video_feed";
 
   late GlobalKey _aiRecommendationWidgetKey;
 
@@ -424,6 +453,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _aiRecommendationWidgetKey = GlobalKey();
     
     // Detection polling (tuned for stability on slower networks)
@@ -432,64 +462,75 @@ class _DashboardPageState extends State<DashboardPage> {
       (_) => _fetchDetections(),
     );
     
-    // Server health check - detect when server starts/stops
+    // Server health check - detect when server starts/stops (every 500ms for FAST offline detection)
     _serverCheckTimer = Timer.periodic(
-      const Duration(seconds: 2),
+      const Duration(milliseconds: 500),
       (_) => _checkServerHealth(),
     );
     
-    // Initial server check
+    // Initial server check immediately
     _checkServerHealth();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App resumed - force a stream restart for a clean connection
+      appLog('📱 Dashboard: App resumed - restarting stream for fresh connection...');
+      _restartStream();
+    }
   }
 
   /// Check if Flask server is online
   Future<void> _checkServerHealth() async {
-    final baseUrl = dotenv.env['DETECTION_SERVER_URL'] ?? 'http://172.20.10.2:5000';
+    final baseUrl = dotenv.env['DETECTION_SERVER_URL'] ?? 'http://172.20.10.3:5000';
     try {
       final response = await http.head(
         Uri.parse('$baseUrl/health'),
-      ).timeout(const Duration(seconds: 2));
+      ).timeout(const Duration(milliseconds: 1000)); // Ultra-aggressive: 1 second timeout
       
       final isOnline = response.statusCode == 200;
       
-      // If server status changed, trigger stream restart
+      // If server status changed, update UI immediately
       if (isOnline != _isServerOnline && mounted) {
         setState(() {
           _isServerOnline = isOnline;
         });
         
-        // Force stream URL change to trigger didUpdateWidget
-        if (isOnline) {
-          appLog('✅ Server is online - triggering stream restart');
-          _restartStream();
-        } else {
-          appLog('❌ Server is offline - stream will show last frame');
-        }
+        appLog(isOnline 
+            ? '✅ Server came online - restarting stream...' 
+            : '❌ Server went offline - stopping stream');
+        
+        // IMPORTANT: Force stream to restart by changing the URL temporarily
+        // This triggers LiveStreamWidget.didUpdateWidget() to reset the live indicator
+        _restartStream();
       }
     } catch (e) {
-      // Server unreachable
+      // Server unreachable - timeout or connection error
       if (_isServerOnline && mounted) {
-        appLog('❌ Server health check failed: $e');
+        appLog('❌ Server health check failed: Server unreachable');
         setState(() {
           _isServerOnline = false;
         });
+        _restartStream();
       }
     }
   }
 
-  /// Force stream to restart by toggling URL
+  /// Force stream to restart by changing URL to trigger widget update
+  /// This is crucial for detecting disconnect immediately
   void _restartStream() {
     if (mounted) {
       setState(() {
-        // Temporarily change URL to empty to reset stream
+        // Temporarily set to empty URL to force reset in LiveStreamWidget
         _streamUrl = '';
       });
       
-      // After a short delay, restore the actual URL
-      Future.delayed(const Duration(milliseconds: 500), () {
+      // After a SHORT delay, restore the actual URL (reduced from 300ms to 100ms)
+      Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) {
           setState(() {
-            _streamUrl = "${dotenv.env['DETECTION_SERVER_URL'] ?? 'http://172.20.10.2:5000'}/video_feed";
+            _streamUrl = "${dotenv.env['DETECTION_SERVER_URL'] ?? 'http://172.20.10.3:5000'}/video_feed";
           });
         }
       });
@@ -569,6 +610,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _detectionTimer?.cancel();
     _serverCheckTimer?.cancel();
     super.dispose();
