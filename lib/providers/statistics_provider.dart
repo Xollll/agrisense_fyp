@@ -37,9 +37,10 @@ class StatisticsProvider extends ChangeNotifier {
       notifyListeners();
 
       // Load in parallel
+      // Use -1 to get ALL historical data (no date filter)
       final results = await Future.wait([
         _statisticsService.getDiseaseStats(),
-        _statisticsService.getTimelineData(),
+        _statisticsService.getTimelineData(days: -1), // -1 = all historical data
         _statisticsService.getStatisticsSummary(),
       ]);
 

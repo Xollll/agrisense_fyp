@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'dart:io';
 import 'package:open_filex/open_filex.dart';
 import '../providers/statistics_provider.dart';
+import '../services/statistics_service.dart';
 import '../widgets/enhanced_app_bar.dart';
 import '../services/export_service.dart';
 import 'package:agrisense/utils/app_log.dart';
@@ -1037,7 +1038,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     String timeRangeLabel;
     switch (_selectedTimeRange) {
       case 0: // All Time
-        daysToShow = provider.timelineData.length;
+        daysToShow = -1; // -1 means all time
         timeRangeLabel = 'All Time';
         break;
       case 1: // 30 Days
@@ -1054,7 +1055,23 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     }
 
     // Get the filtered data based on selection
-    final recentData = provider.timelineData.take(daysToShow).toList();
+    // Filter by actual date range, not just item count
+    final List<TimelineData> recentData;
+    if (daysToShow < 0) {
+      // All time - show all data
+      recentData = provider.timelineData;
+    } else {
+      // Calculate date range based on the most recent data point (not today)
+      if (provider.timelineData.isEmpty) {
+        recentData = [];
+      } else {
+        final mostRecentDate = provider.timelineData.last.date;
+        final startDate = mostRecentDate.subtract(Duration(days: daysToShow));
+        recentData = provider.timelineData
+            .where((data) => data.date.isAfter(startDate) || data.date.isAtSameMomentAs(startDate))
+            .toList();
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

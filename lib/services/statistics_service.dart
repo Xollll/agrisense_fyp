@@ -88,6 +88,7 @@ class StatisticsService {
   }
 
   /// Get timeline data for the last N days
+  /// If days is null or -1, returns ALL historical data
   Future<List<TimelineData>> getTimelineData({int days = 30}) async {
     final history = await getDetectionHistory();
 
@@ -98,13 +99,14 @@ class StatisticsService {
     // Group by date
     final timelineMap = <String, int>{};
     final now = DateTime.now();
-    final startDate = now.subtract(Duration(days: days));
+    final startDate = days < 0 ? null : now.subtract(Duration(days: days));
 
     for (var detection in history) {
       final timestamp = detection['timestamp'] as String? ?? '';
       if (timestamp.isNotEmpty) {
         final detectionTime = DateTime.tryParse(timestamp);
-        if (detectionTime != null && detectionTime.isAfter(startDate)) {
+        // If startDate is null (all time), include all data; otherwise filter by date
+        if (detectionTime != null && (startDate == null || detectionTime.isAfter(startDate))) {
           final dateKey =
               '${detectionTime.year}-${detectionTime.month.toString().padLeft(2, '0')}-${detectionTime.day.toString().padLeft(2, '0')}';
           timelineMap[dateKey] = (timelineMap[dateKey] ?? 0) + 1;

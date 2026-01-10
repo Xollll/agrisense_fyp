@@ -848,7 +848,7 @@ class _DetectionCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'How sure the AI is about the label (not disease severity).',
+                      'How sure the AI is about the label.',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: Colors.grey,
                             fontSize: 11,
@@ -1244,7 +1244,7 @@ class _DetectionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'How sure the AI is about this label (not disease severity).',
+                  'How sure the AI is about this label.',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: Colors.grey,
                         fontStyle: FontStyle.italic,
