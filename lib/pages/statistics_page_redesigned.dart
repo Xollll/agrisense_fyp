@@ -652,14 +652,14 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: soilDark,
+            color: Colors.white,
           ),
         ),
         Text(
           label,
           style: TextStyle(
             fontSize: 11,
-            color: soilDark.withOpacity(0.6),
+            color: Colors.white.withOpacity(0.9),
           ),
         ),
       ],
@@ -832,7 +832,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: cropGreen,
+            color: isDarkMode ? Colors.white : cropGreen,
           ),
         ),
       ],

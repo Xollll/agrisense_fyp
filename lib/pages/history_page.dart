@@ -395,13 +395,17 @@ class _HistoryPageState extends State<HistoryPage> {
                           '${filteredDetections.length}',
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: Theme.of(context).primaryColor,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : Theme.of(context).primaryColor,
                               ),
                         ),
                         Text(
                           'Detections',
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: Colors.grey,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey.shade600
+                                    : Colors.grey.shade700,
                               ),
                         ),
                       ],
@@ -417,13 +421,17 @@ class _HistoryPageState extends State<HistoryPage> {
                           _getDiseaseCountSummary(filteredDetections),
                           style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                 fontWeight: FontWeight.w700,
-                                color: Theme.of(context).primaryColor,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : Theme.of(context).primaryColor,
                               ),
                         ),
                         Text(
                           'Found',
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: Colors.grey,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey.shade600
+                                    : Colors.grey.shade700,
                               ),
                         ),
                       ],
@@ -561,7 +569,9 @@ class _HistoryPageState extends State<HistoryPage> {
                       child: Text(
                         'No detections found',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade600,
                             ),
                       ),
                     )
@@ -643,7 +653,9 @@ class _HistoryPageState extends State<HistoryPage> {
                     Icon(
                       Icons.calendar_today,
                       size: 18,
-                      color: Theme.of(context).primaryColor,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Theme.of(context).primaryColor,
                     ),
                     const SizedBox(width: 10),
                     Text(
@@ -664,7 +676,9 @@ class _HistoryPageState extends State<HistoryPage> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: Theme.of(context).primaryColor,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Theme.of(context).primaryColor,
                         ),
                       ),
                     ),
@@ -896,7 +910,7 @@ class _DetectionCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: Colors.grey,
+                          color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
                         ),
                   ),
                   const SizedBox(height: 8),
@@ -917,7 +931,9 @@ class _DetectionCard extends StatelessWidget {
                       child: Text(
                         'View Full Recommendation',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: Theme.of(context).primaryColor,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.blue.shade400
+                                  : Theme.of(context).primaryColor,
                               fontWeight: FontWeight.w700,
                               fontSize: 12,
                             ),
@@ -1131,7 +1147,7 @@ class _DetectionCard extends StatelessWidget {
                           Text(
                             formattedDate,
                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: Colors.grey,
+                                  color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
                                 ),
                           ),
                         ],
@@ -1218,7 +1234,7 @@ class _DetectionCard extends StatelessWidget {
                                   ? 'Your plant appears to be in good condition'
                                   : 'Your plant may have health issues that need attention',
                               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Colors.grey,
+                                    color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
                               ),
                             ),
                           ],
@@ -1278,7 +1294,7 @@ class _DetectionCard extends StatelessWidget {
                 Text(
                   'How sure the AI is about this label.',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Colors.grey,
+                        color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
                         fontStyle: FontStyle.italic,
                       ),
                 ),
