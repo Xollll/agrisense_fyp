@@ -97,9 +97,9 @@ class _MJPEGStreamState extends State<MJPEGStream> {
       appLog('🔌 Initiating MJPEG stream connection to: ${widget.url}');
       final request = http.Request('GET', Uri.parse(widget.url));
       
-      // Add timeout to connection attempt (reduced from 5s to 3s for faster feedback)
+      // Add timeout to connection attempt (allow enough time for TCP + TLS handshake)
       final response = await _httpClient!.send(request).timeout(
-        const Duration(seconds: 3),
+        const Duration(milliseconds: 3000),
         onTimeout: () {
           throw TimeoutException('Stream connection timeout after 3 seconds');
         },

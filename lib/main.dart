@@ -487,7 +487,7 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
     try {
       final response = await http.head(
         Uri.parse('$baseUrl/health'),
-      ).timeout(const Duration(milliseconds: 1000)); // Ultra-aggressive: 1 second timeout
+      ).timeout(const Duration(milliseconds: 800)); // Fast health check (1 quick attempt)
       
       final isOnline = response.statusCode == 200;
       

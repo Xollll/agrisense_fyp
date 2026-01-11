@@ -114,10 +114,10 @@ class DetectionService {
 
       appLog('🔍 Fetching detection from: $serverUrl/latest_detection');
 
-      // ✅ Use very aggressive timeout for fast fail-over
+      // ✅ Use fast timeout for detection (allows for retries: 1.2s × 2 retries + 100ms overhead = 2.5s max)
       final response = await HttpRetryService.get(
         Uri.parse("$serverUrl/latest_detection"),
-      ).timeout(const Duration(seconds: 3)); // Total timeout: 3 seconds max
+      ).timeout(const Duration(milliseconds: 2500)); // 2.5s total (allows 2 retry attempts)
 
       if (response.statusCode != 200) {
         appLog('❌ Server error: ${response.statusCode}');

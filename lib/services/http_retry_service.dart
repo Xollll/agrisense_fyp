@@ -8,10 +8,10 @@ import 'package:agrisense/utils/app_log.dart';
 /// Handles network failures gracefully with automatic retries
 class HttpRetryService {
   // Configuration
-  static const int maxRetries = 1; // Fail fast - only 1 retry
-  static const Duration initialDelay = Duration(milliseconds: 200); // Quick retry
-  static const double backoffMultiplier = 1.5; // Minimal backoff
-  static const Duration requestTimeout = Duration(seconds: 2); // Very aggressive - 2s per attempt
+  static const int maxRetries = 2; // 2 retries for higher success rate on first try
+  static const Duration initialDelay = Duration(milliseconds: 50); // Super-fast retry (no backoff on retries)
+  static const double backoffMultiplier = 1.0; // NO backoff - retry at same speed (local network is fast)
+  static const Duration requestTimeout = Duration(milliseconds: 1200); // 1.2s for connection + HTTP overhead (TCP + TLS)
 
   /// Performs GET request with retry logic
   /// Retries automatically on network failures
