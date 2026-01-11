@@ -59,13 +59,13 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
   @override
   void didUpdateWidget(LiveStreamWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     // Reset to disconnected when stream URL changes (including when set to empty)
     if (oldWidget.streamUrl != widget.streamUrl) {
       setState(() {
         _liveStatus = LiveStatus.disconnected;
       });
-      
+
       // If URL is now empty, it's likely a forced disconnect
       if (widget.streamUrl.isEmpty) {
         appLog('📺 Stream URL cleared - waiting for reconnection...');
@@ -81,8 +81,8 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
           _liveStatus == LiveStatus.connected
               ? '✅ Camera is streaming live'
               : _liveStatus == LiveStatus.connecting
-                  ? '⏳ Attempting to connect to camera'
-                  : '❌ Camera is not connected. Check camera settings.',
+              ? '⏳ Attempting to connect to camera'
+              : '❌ Camera is not connected. Check camera settings.',
         ),
         duration: const Duration(seconds: 2),
       ),
@@ -104,7 +104,11 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
       final label = d.label.trim();
       final existing = grouped[label];
       if (existing == null) {
-        grouped[label] = _GroupedDetection(label: label, count: 1, maxConfidence: d.confidence);
+        grouped[label] = _GroupedDetection(
+          label: label,
+          count: 1,
+          maxConfidence: d.confidence,
+        );
       } else {
         grouped[label] = _GroupedDetection(
           label: label,
@@ -137,9 +141,8 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                child: SizedBox(
-                  height: 280,
-                  width: double.infinity,
+                child: AspectRatio(
+                  aspectRatio: 16 / 9, // 🔑 keeps video natural
                   child: MJPEGStream(
                     url: widget.streamUrl,
                     onStatusChanged: _updateStreamStatus,
@@ -221,7 +224,8 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
                       ),
                     )
                   : SizedBox(
-                      height: 160, // Keep this constant so AI section doesn't jump
+                      height:
+                          160, // Keep this constant so AI section doesn't jump
                       child: Scrollbar(
                         thumbVisibility: true,
                         child: SingleChildScrollView(
@@ -233,17 +237,22 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
 
                               return Padding(
                                 padding: EdgeInsets.only(
-                                  bottom: index < groupedList.length - 1 ? 16 : 0,
+                                  bottom: index < groupedList.length - 1
+                                      ? 16
+                                      : 0,
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Expanded(
                                           child: Text(
-                                            g.count > 1 ? '${g.label} (x${g.count})' : g.label,
+                                            g.count > 1
+                                                ? '${g.label} (x${g.count})'
+                                                : g.label,
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .titleMedium
@@ -260,10 +269,14 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
                                             vertical: 6,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: AppColors.warning.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(8),
+                                            color: AppColors.warning
+                                                .withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                             border: Border.all(
-                                              color: AppColors.warning.withOpacity(0.3),
+                                              color: AppColors.warning
+                                                  .withOpacity(0.3),
                                             ),
                                           ),
                                           child: Text(
@@ -283,12 +296,12 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
                                       child: LinearProgressIndicator(
                                         value: g.maxConfidence,
                                         minHeight: 6,
-                                        backgroundColor:
-                                            AppColors.warning.withOpacity(0.15),
+                                        backgroundColor: AppColors.warning
+                                            .withOpacity(0.15),
                                         valueColor:
                                             const AlwaysStoppedAnimation<Color>(
-                                          AppColors.warning,
-                                        ),
+                                              AppColors.warning,
+                                            ),
                                       ),
                                     ),
                                   ],

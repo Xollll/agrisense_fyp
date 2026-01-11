@@ -117,7 +117,11 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
               const SizedBox(height: 16),
               Text(
                 'Growing your insights...',
-                style: TextStyle(color: Colors.grey.shade600),
+                style: TextStyle(
+                  color: isDarkMode 
+                      ? Colors.grey.shade400
+                      : Colors.grey.shade600,
+                ),
               ),
             ],
           ),
@@ -183,7 +187,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
       statusEmoji = '⚠️';
       statusText = 'Needs Care';
     } else {
-      statusColor = Colors.orange.shade700;
+      statusColor = const Color(0xFFFF6B35);
       statusEmoji = '🚨';
       statusText = 'Critical';
     }
@@ -393,7 +397,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     // Calculate disease progression forecast
     String forecastText = '';
     String forecastEmoji = '📊';
-    Color forecastColor = Colors.grey;
+    Color forecastColor = isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600;
     
     if (provider.diseaseStats.isNotEmpty) {
       final topDisease = provider.diseaseStats.first;
@@ -417,11 +421,11 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
       // Generate forecast message
       if (projectedPercentage > 80) {
         forecastEmoji = '🚨';
-        forecastColor = Colors.red.shade600;
+        forecastColor = const Color(0xFFFF6B35);
         forecastText = 'CRITICAL: ${topDisease.disease} could peak above 80% in 2 weeks - immediate action required';
       } else if (projectedPercentage > 60) {
         forecastEmoji = '⚠️';
-        forecastColor = Colors.orange.shade600;
+        forecastColor = const Color(0xFFFFA500);
         forecastText = '${topDisease.disease} may reach ${projectedPercentage.toStringAsFixed(0)}% in 2 weeks - monitor closely';
       } else if (projectedPercentage > topDisease.percentage + 10) {
         forecastEmoji = '📈';
@@ -446,7 +450,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: soilDark,
+            color: isDarkMode ? Colors.white : soilDark,
           ),
         ),
         const SizedBox(height: 16),
@@ -459,17 +463,17 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                 decoration: BoxDecoration(
                   color: isHealthImproving 
                       ? leafGreen.withOpacity(0.15)
-                      : Colors.orange.shade100,
+                      : const Color(0xFFFFA500).withOpacity(0.15),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isHealthImproving 
                         ? leafGreen.withOpacity(0.3)
-                        : Colors.orange.shade300,
+                        : const Color(0xFFFFA500).withOpacity(0.3),
                     width: 1.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: (isHealthImproving ? leafGreen : Colors.orange).withOpacity(0.1),
+                      color: (isHealthImproving ? leafGreen : const Color(0xFFFFA500)).withOpacity(0.1),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -483,7 +487,9 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: soilDark.withOpacity(0.7),
+                        color: isDarkMode 
+                            ? Colors.grey.shade300
+                            : soilDark.withOpacity(0.7),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -506,16 +512,17 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                                     ? leafGreen 
                                     : Colors.orange.shade600,
                               ),
-                            ),
-                            Text(
-                              isHealthImproving 
-                                  ? 'Improving' 
-                                  : 'Declining',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: soilDark.withOpacity(0.6),
-                              ),
-                            ),
+                            ),                                            Text(
+                                              isHealthImproving 
+                                                  ? 'Improving' 
+                                                  : 'Declining',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: isDarkMode 
+                                                    ? Colors.grey.shade300
+                                                    : soilDark.withOpacity(0.6),
+                                              ),
+                                            ),
                           ],
                         ),
                       ],
@@ -570,7 +577,9 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: soilDark.withOpacity(0.7),
+                        color: isDarkMode 
+                            ? Colors.grey.shade300
+                            : soilDark.withOpacity(0.7),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -616,16 +625,15 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                 child: Text(forecastEmoji, style: const TextStyle(fontSize: 20)),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  forecastText,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: soilDark,
-                    height: 1.4,
-                  ),
+              Expanded(              child: Text(
+                forecastText,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDarkMode ? Colors.white : soilDark,
+                  height: 1.4,
                 ),
+              ),
               ),
             ],
           ),
@@ -737,7 +745,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: soilDark,
+            color: isDarkMode ? Colors.white : soilDark,
           ),
         ),
         const SizedBox(height: 16),
@@ -797,28 +805,27 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: isDarkMode ? Colors.grey.shade300 : soilDark,
-                ),
+        Expanded(              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: isDarkMode ? Colors.white : soilDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600,
-                ),
-              ),
-            ],
-          ),
         ),
         Text(
           value,
@@ -847,7 +854,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: soilDark,
+            color: isDarkMode ? Colors.white : soilDark,
           ),
         ),
         const SizedBox(height: 8),
@@ -855,7 +862,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           'Diseases ranked by detection frequency and confidence level',
           style: TextStyle(
             fontSize: 13,
-            color: Colors.grey.shade600,
+            color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
             fontStyle: FontStyle.italic,
           ),
         ),
@@ -863,15 +870,15 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
+            color: isDarkMode ? Colors.grey.shade900 : Colors.white.withOpacity(0.9),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: Colors.white.withOpacity(0.5),
+              color: isDarkMode ? Colors.grey.shade800 : Colors.white.withOpacity(0.5),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.05),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -950,7 +957,9 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                                     _getThreatLabel(disease.percentage),
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: threatColor,
+                                      color: isDarkMode 
+                                          ? threatColor.withOpacity(0.8) 
+                                          : threatColor.withOpacity(0.9),
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -990,7 +999,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                       if (index < (provider.diseaseStats.length > 5 ? 4 : provider.diseaseStats.length - 1))
                         Divider(
                           height: 12,
-                          color: Colors.grey.shade200,
+                          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200,
                         ),
                     ],
                   ),
@@ -1081,7 +1090,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: soilDark,
+            color: isDarkMode ? Colors.white : soilDark,
           ),
         ),
         const SizedBox(height: 16),
@@ -1099,15 +1108,15 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
+            color: isDarkMode ? Colors.grey.shade900 : Colors.white.withOpacity(0.9),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withOpacity(0.5),
+              color: isDarkMode ? Colors.grey.shade800 : Colors.white.withOpacity(0.5),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.05),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -1125,7 +1134,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: soilDark.withOpacity(0.7),
+                      color: isDarkMode ? Colors.white : soilDark.withOpacity(0.7),
                     ),
                   ),
                   // Show data point count
@@ -1153,26 +1162,34 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
               const SizedBox(height: 24),
               SizedBox(
                 height: 95,
-                child: _buildAnimatedBarChart(recentData),
+                child: _buildAnimatedBarChart(recentData, isDarkMode),
               ),
               const SizedBox(height: 16),
               // Contextual insight message based on time range
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: leafGreen.withOpacity(0.1),
+                  color: isDarkMode ? Colors.grey.shade800.withOpacity(0.6) : leafGreen.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDarkMode ? Colors.grey.shade700 : leafGreen.withOpacity(0.3),
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.lightbulb, color: cropGreen, size: 16),
+                    Icon(
+                      Icons.lightbulb,
+                      color: isDarkMode ? sunYellow : cropGreen,
+                      size: 16,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _getTimeRangeInsight(timeRangeLabel, recentData.length),
                         style: TextStyle(
                           fontSize: 12,
-                          color: soilDark.withOpacity(0.8),
+                          color: isDarkMode ? Colors.grey.shade200 : soilDark.withOpacity(0.8),
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -1205,7 +1222,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     }
   }
 
-  Widget _buildAnimatedBarChart(List<dynamic> data) {
+  Widget _buildAnimatedBarChart(List<dynamic> data, bool isDarkMode) {
     if (data.isEmpty) return const SizedBox.shrink();
 
     final maxCount = data.fold<int>(0, (prev, item) {
@@ -1277,7 +1294,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                       _formatDateShort(item.date ?? DateTime.now()),
                       style: TextStyle(
                         fontSize: 10,
-                        color: soilDark.withOpacity(0.6),
+                        color: isDarkMode ? Colors.grey.shade400 : soilDark.withOpacity(0.6),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1429,7 +1446,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: soilDark,
+                color: isDarkMode ? Colors.white : soilDark,
               ),
             ),
             Tooltip(
@@ -1449,19 +1466,24 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                skyBlue.withOpacity(0.1),
-                leafGreen.withOpacity(0.05),
-              ],
+              colors: isDarkMode
+                  ? [
+                      Colors.grey.shade800.withOpacity(0.6),
+                      Colors.grey.shade800.withOpacity(0.3),
+                    ]
+                  : [
+                      skyBlue.withOpacity(0.1),
+                      leafGreen.withOpacity(0.05),
+                    ],
             ),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withOpacity(0.5),
+              color: isDarkMode ? Colors.grey.shade700 : Colors.white.withOpacity(0.5),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -1494,8 +1516,16 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: insight['color'].withOpacity(0.15),
+                          color: isDarkMode
+                              ? insight['color'].withOpacity(0.25)
+                              : insight['color'].withOpacity(0.15),
                           borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDarkMode
+                                ? insight['color'].withOpacity(0.4)
+                                : Colors.transparent,
+                            width: 1,
+                          ),
                         ),
                         child: Text(
                           insight['emoji'],
@@ -1509,7 +1539,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
-                            color: soilDark,
+                            color: isDarkMode ? Colors.grey.shade200 : soilDark,
                             height: 1.4,
                           ),
                         ),

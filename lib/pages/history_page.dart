@@ -357,7 +357,9 @@ class _HistoryPageState extends State<HistoryPage> {
                 Text(
                   "Start scanning plants to build your history",
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600,
                       ),
                   textAlign: TextAlign.center,
                 ),
@@ -447,16 +449,30 @@ class _HistoryPageState extends State<HistoryPage> {
                           },
                           decoration: InputDecoration(
                             hintText: 'Search disease...',
-                            prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                            prefixIcon: Icon(
+                              Icons.search, 
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade600,
+                            ),
                             suffixIcon: _searchQuery.isNotEmpty
                                 ? GestureDetector(
                                     onTap: () => setState(() => _searchQuery = ''),
-                                    child: Icon(Icons.clear, color: Colors.grey.shade600),
+                                    child: Icon(
+                                      Icons.clear, 
+                                      color: Theme.of(context).brightness == Brightness.dark
+                                          ? Colors.grey.shade400
+                                          : Colors.grey.shade600,
+                                    ),
                                   )
                                 : null,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey.shade700
+                                    : Colors.grey.shade300,
+                              ),
                             ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
@@ -513,14 +529,20 @@ class _HistoryPageState extends State<HistoryPage> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 12,
-                                color: isSelected ? Colors.white : Colors.grey.shade700,
+                                color: isSelected 
+                                    ? Colors.white 
+                                    : (Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.grey.shade300
+                                        : Colors.grey.shade700),
                               ),
                             ),
                             selected: isSelected,
                             onSelected: (selected) {
                               setState(() => _selectedFilter = filter);
                             },
-                            backgroundColor: Colors.grey.shade200,
+                            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey.shade800
+                                : Colors.grey.shade200,
                             selectedColor: Theme.of(context).primaryColor,
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           ),
@@ -766,7 +788,9 @@ class _DetectionCard extends StatelessWidget {
                           Text(
                             formattedDate,
                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: Colors.grey,
+                                  color: isDarkMode 
+                                      ? Colors.grey.shade400
+                                      : Colors.grey.shade600,
                                   fontSize: 12,
                                 ),
                           ),
@@ -822,7 +846,9 @@ class _DetectionCard extends StatelessWidget {
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.grey,
+                                color: isDarkMode 
+                                    ? Colors.grey.shade400
+                                    : Colors.grey.shade600,
                               ),
                         ),
                         Text(
@@ -841,7 +867,9 @@ class _DetectionCard extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: confidence,
                         minHeight: 6,
-                        backgroundColor: Colors.grey.shade300,
+                        backgroundColor: isDarkMode 
+                            ? Colors.grey.shade700
+                            : Colors.grey.shade300,
                         valueColor:
                             AlwaysStoppedAnimation<Color>(diagnosisConfidenceColor),
                       ),
@@ -850,7 +878,9 @@ class _DetectionCard extends StatelessWidget {
                     Text(
                       'How sure the AI is about the label.',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.grey,
+                            color: isDarkMode 
+                                ? Colors.grey.shade400
+                                : Colors.grey.shade600,
                             fontSize: 11,
                             fontStyle: FontStyle.italic,
                           ),
@@ -1217,7 +1247,9 @@ class _DetectionCard extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: confidence,
                           minHeight: 10,
-                          backgroundColor: Colors.grey.shade300,
+                          backgroundColor: isDarkMode 
+                              ? Colors.grey.shade700
+                              : Colors.grey.shade300,
                           valueColor:
                               AlwaysStoppedAnimation<Color>(diagnosisConfidenceColor),
                         ),
