@@ -57,7 +57,8 @@ class StatisticsService {
     final lastDetectedMap = <String, DateTime>{};
 
     for (var detection in history) {
-      final disease = detection['disease_label'] as String? ?? 'Unknown';
+      // Support both 'label' and 'disease_label' fields
+      final disease = (detection['disease_label'] ?? detection['label'] ?? 'Unknown') as String;
       final timestamp = detection['timestamp'] as String? ?? '';
 
       diseaseMap[disease] = (diseaseMap[disease] ?? 0) + 1;
@@ -144,7 +145,8 @@ class StatisticsService {
 
     int healthyCount = 0;
     for (var detection in history) {
-      final diseaseLabel = (detection['disease_label'] as String?)?.toLowerCase() ?? '';
+      // Support both 'label' and 'disease_label' fields
+      final diseaseLabel = ((detection['disease_label'] ?? detection['label']) as String?)?.toLowerCase() ?? '';
       if (diseaseLabel.contains('healthy') ||
           diseaseLabel.contains('no disease') ||
           diseaseLabel == 'normal') {
@@ -183,6 +185,66 @@ class StatisticsService {
     final healthyPercentage = await getHealthyPercentage();
     final diseaseStats = await getDiseaseStats();
     final mostCommon = await getMostCommonDisease();
+    
+    // Calculate month-over-month health comparison
+    final now = DateTime.now();
+    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+    final sixtyDaysAgo = now.subtract(const Duration(days: 60));
+    
+    final history = await getDetectionHistory();
+    
+    // Current month: detections from last 30 days
+    final currentMonthDetections = history
+        .where((d) {
+          final timestamp = DateTime.tryParse(d['timestamp']?.toString() ?? '');
+          return timestamp != null && timestamp.isAfter(thirtyDaysAgo);
+        })
+        .toList();
+    
+    // Previous month: detections from 30-60 days ago
+    var previousMonthDetections = history
+        .where((d) {
+          final timestamp = DateTime.tryParse(d['timestamp']?.toString() ?? '');
+          return timestamp != null && 
+                 timestamp.isAfter(sixtyDaysAgo) && 
+                 timestamp.isBefore(thirtyDaysAgo);
+        })
+        .toList();
+    
+    // If no data from 30-60 days ago, use first half of all available data for comparison
+    if (previousMonthDetections.isEmpty && history.isNotEmpty) {
+      final midpoint = (history.length / 2).floor();
+      previousMonthDetections = history.sublist(0, midpoint);
+    }
+    
+    // Calculate healthy percentage for current month
+    double currentMonthHealth = 0;
+    if (currentMonthDetections.isNotEmpty) {
+      final healthyCount = currentMonthDetections
+          .where((d) {
+            // Support both 'label' and 'disease_label' fields
+            final label = ((d['disease_label'] ?? d['label']) as String?)?.toLowerCase() ?? '';
+            return label.contains('healthy') || label.contains('no disease') || label == 'normal';
+          })
+          .length;
+      currentMonthHealth = (healthyCount / currentMonthDetections.length) * 100;
+    }
+    
+    // Calculate healthy percentage for previous month
+    double previousMonthHealth = 0;
+    if (previousMonthDetections.isNotEmpty) {
+      final healthyCount = previousMonthDetections
+          .where((d) {
+            // Support both 'label' and 'disease_label' fields
+            final label = ((d['disease_label'] ?? d['label']) as String?)?.toLowerCase() ?? '';
+            return label.contains('healthy') || label.contains('no disease') || label == 'normal';
+          })
+          .length;
+      previousMonthHealth = (healthyCount / previousMonthDetections.length) * 100;
+    } else {
+      // If no data at all, use current as baseline
+      previousMonthHealth = currentMonthHealth;
+    }
 
     return {
       'total_detections': totalDetections,
@@ -193,6 +255,9 @@ class StatisticsService {
       'last_detection': totalDetections > 0
           ? (await getDetectionHistory()).last['timestamp'] ?? 'Unknown'
           : 'No detections yet',
+      'previous_month_health': previousMonthHealth.toStringAsFixed(1),
+      'current_month_detections': currentMonthDetections.length,
+      'previous_month_detections': previousMonthDetections.length,
     };
   }
 

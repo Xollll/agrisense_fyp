@@ -390,21 +390,24 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
     final previousHealth = double.tryParse(summary['previous_month_health']?.toString() ?? '0') ?? currentHealth;
     
     // Calculate month-over-month change
+    // Simple calculation: current month health - previous month health
     final healthChange = currentHealth - previousHealth;
-    final healthChangePercent = previousHealth > 0 ? (healthChange / previousHealth * 100) : 0;
     final isHealthImproving = healthChange >= 0;
     
     // Calculate disease progression forecast
     String forecastText = '';
     String forecastEmoji = '📊';
     Color forecastColor = isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600;
+    double projectedPercentage = 0;
+    String topDiseaseName = '';
     
     if (provider.diseaseStats.isNotEmpty) {
       final topDisease = provider.diseaseStats.first;
+      topDiseaseName = topDisease.disease;
       final daysToProject = 14; // Project 2 weeks ahead
       
       // Calculate detection trend (simple linear projection)
-      double projectedPercentage = topDisease.percentage;
+      projectedPercentage = topDisease.percentage;
       
       if (provider.timelineData.isNotEmpty && provider.timelineData.length >= 2) {
         final recent = provider.timelineData.first.count as int? ?? 0;
@@ -422,23 +425,23 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
       if (projectedPercentage > 80) {
         forecastEmoji = '🚨';
         forecastColor = const Color(0xFFFF6B35);
-        forecastText = 'CRITICAL: ${topDisease.disease} could peak above 80% in 2 weeks - immediate action required';
+        forecastText = 'CRITICAL: $topDiseaseName could peak above 80% in 2 weeks - immediate action required';
       } else if (projectedPercentage > 60) {
         forecastEmoji = '⚠️';
         forecastColor = const Color(0xFFFFA500);
-        forecastText = '${topDisease.disease} may reach ${projectedPercentage.toStringAsFixed(0)}% in 2 weeks - monitor closely';
+        forecastText = '$topDiseaseName may reach ${projectedPercentage.toStringAsFixed(0)}% in 2 weeks - monitor closely';
       } else if (projectedPercentage > topDisease.percentage + 10) {
         forecastEmoji = '📈';
         forecastColor = sunYellow;
-        forecastText = '${topDisease.disease} trend is upward - preventive action recommended';
+        forecastText = '$topDiseaseName trend is upward - preventive action recommended';
       } else if (projectedPercentage < topDisease.percentage - 10) {
         forecastEmoji = '✅';
         forecastColor = leafGreen;
-        forecastText = '${topDisease.disease} trending downward - treatments appear to be working!';
+        forecastText = '$topDiseaseName trending downward - treatments appear to be working!';
       } else {
         forecastEmoji = '📊';
         forecastColor = cropGreen;
-        forecastText = '${topDisease.disease} stable - maintain current monitoring';
+        forecastText = '$topDiseaseName stable - maintain current monitoring';
       }
     }
     
@@ -454,190 +457,293 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            // Month-over-Month Card
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isHealthImproving 
-                      ? leafGreen.withOpacity(0.15)
-                      : const Color(0xFFFFA500).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isHealthImproving 
-                        ? leafGreen.withOpacity(0.3)
-                        : const Color(0xFFFFA500).withOpacity(0.3),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isHealthImproving ? leafGreen : const Color(0xFFFFA500)).withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Month-over-Month',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isDarkMode 
-                            ? Colors.grey.shade300
-                            : soilDark.withOpacity(0.7),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final cardWidth = (constraints.maxWidth - 12) / 2;
+            
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Month-over-Month Card
+                SizedBox(
+                  width: cardWidth,
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isHealthImproving 
+                          ? leafGreen.withOpacity(0.15)
+                          : const Color(0xFFFFA500).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isHealthImproving 
+                            ? leafGreen.withOpacity(0.3)
+                            : const Color(0xFFFFA500).withOpacity(0.3),
+                        width: 1.5,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Text(
-                          isHealthImproving ? '📈' : '📉',
-                          style: const TextStyle(fontSize: 24),
-                        ),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${isHealthImproving ? '+' : ''}${healthChangePercent.toStringAsFixed(1)}%',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: isHealthImproving 
-                                    ? leafGreen 
-                                    : Colors.orange.shade600,
-                              ),
-                            ),                                            Text(
-                                              isHealthImproving 
-                                                  ? 'Improving' 
-                                                  : 'Declining',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: isDarkMode 
-                                                    ? Colors.grey.shade300
-                                                    : soilDark.withOpacity(0.6),
-                                              ),
-                                            ),
-                          ],
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isHealthImproving ? leafGreen : const Color(0xFFFFA500)).withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        isHealthImproving 
-                            ? '✨ Great progress!'
-                            : '⚠️ Needs attention',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: soilDark,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Month Trend',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode 
+                                ? Colors.grey.shade300
+                                : soilDark.withOpacity(0.7),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              isHealthImproving ? '📈' : '📉',
+                              style: const TextStyle(fontSize: 18),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${isHealthImproving ? '+' : ''}${healthChange.toStringAsFixed(1)}%',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: isHealthImproving 
+                                          ? leafGreen 
+                                          : Colors.orange.shade600,
+                                    ),
+                                  ),
+                                  Text(
+                                    isHealthImproving 
+                                        ? 'Improving' 
+                                        : 'Declining',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: isDarkMode 
+                                          ? Colors.grey.shade300
+                                          : soilDark.withOpacity(0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isHealthImproving 
+                                    ? '✨ Progress'
+                                    : '⚠️ Attention',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                  color: soilDark,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: 'This month: ',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        color: soilDark.withOpacity(0.6),
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: '${summary['current_month_detections'] ?? 0}',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w700,
+                                        color: soilDark,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: 'Last month: ',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        color: soilDark.withOpacity(0.6),
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: '${summary['previous_month_detections'] ?? 0}',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w700,
+                                        color: soilDark,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // 2-Week Forecast Card
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: forecastColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: forecastColor.withOpacity(0.3),
-                    width: 1.5,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: forecastColor.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '14-Day Forecast',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isDarkMode 
-                            ? Colors.grey.shade300
-                            : soilDark.withOpacity(0.7),
+                const SizedBox(width: 12),
+                // 2-Week Forecast Card
+                SizedBox(
+                  width: cardWidth,
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: forecastColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: forecastColor.withOpacity(0.3),
+                        width: 1.5,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: forecastColor.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      forecastEmoji,
-                      style: const TextStyle(fontSize: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '14-Day Forecast',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode 
+                                ? Colors.grey.shade300
+                                : soilDark.withOpacity(0.7),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              forecastEmoji,
+                              style: const TextStyle(fontSize: 24),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${projectedPercentage.toStringAsFixed(0)}%',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: forecastColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Projected',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: isDarkMode 
+                                          ? Colors.grey.shade300
+                                          : soilDark.withOpacity(0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            topDiseaseName.isNotEmpty ? topDiseaseName : 'N/A',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: soilDark.withOpacity(0.8),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Disease Outlook',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: forecastColor,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
         const SizedBox(height: 12),
-        // Forecast Detail
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: forecastColor.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: forecastColor.withOpacity(0.2),
-              width: 1,
+        // Forecast Detail - only show if there's a meaningful forecast
+        if (forecastText.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: forecastColor.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: forecastColor.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: forecastColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(forecastEmoji, style: const TextStyle(fontSize: 18)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    forecastText,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isDarkMode ? Colors.white : soilDark,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: forecastColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(forecastEmoji, style: const TextStyle(fontSize: 20)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(              child: Text(
-                forecastText,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: isDarkMode ? Colors.white : soilDark,
-                  height: 1.4,
-                ),
-              ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
