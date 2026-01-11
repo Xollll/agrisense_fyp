@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import '../detection_service.dart';
 import '../gemini_service.dart';
 import '../services/supabase_service.dart';
@@ -112,20 +113,38 @@ class _AIRecommendationWidgetState extends State<AIRecommendationWidget> {
         forceRefresh: true, // User explicitly asked for tips
       );
 
-      // ✅ OPTION A: Save recommendation to Supabase
+      // ✅ UPDATE the solution column of the latest detection record
       if (ai.isNotEmpty && widget.lastDetectionPersistent != null) {
         try {
           final supabase = SupabaseService();
-          await supabase.saveDetection(
-            label: (_selectedDiseaseLabel ?? widget.lastDetectionPersistent!.label),
-            confidence: widget.lastDetectionPersistent!.confidence,
-            solution: ai,
-            timestamp: DateTime.now().toIso8601String(),
-          );
-          appLog('Recommendation saved to Supabase');
+          final diseaseLabel = (_selectedDiseaseLabel ?? widget.lastDetectionPersistent!.label);
+          
+          appLog('📝 About to save recommendation for disease: "$diseaseLabel"');
+          appLog('💡 Recommendation text: "${ai.substring(0, min(100, ai.length))}"');
+          
+          // Get the latest detection ID for this disease
+          final detectionId = await supabase.getLatestDetectionId(diseaseLabel);
+          
+          if (detectionId != null) {
+            // Update the solution column of the existing detection
+            final success = await supabase.updateDetectionSolution(
+              detectionId: detectionId,
+              solution: ai,
+            );
+            
+            if (success) {
+              appLog('✅ Successfully updated solution for detection ID: $detectionId');
+            } else {
+              appLog('❌ Failed to update solution in database');
+            }
+          } else {
+            appLog('⚠️ No detection found for label: "$diseaseLabel" - cannot update solution');
+          }
         } catch (e) {
-          appLog('Failed to save recommendation to Supabase: $e');
+          appLog('❌ Exception while saving recommendation: $e');
         }
+      } else {
+        appLog('⚠️ Skipped save: ai.isEmpty=${ai.isEmpty}, lastDetection=${widget.lastDetectionPersistent == null}');
       }
 
       if (mounted) {

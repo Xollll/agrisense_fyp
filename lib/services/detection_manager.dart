@@ -3,12 +3,14 @@
 // Background polling for disease detection
 // =============================================
 // Polls camera for new detections and sends notifications
+// Saves detections to database automatically
 // Only notifies when confidence varies by 10% or more for the same disease
 // Does NOT make API calls or save recommendations (user-triggered only)
 //
 import 'dart:async';
 import '../detection_service.dart';
 import 'notification_service.dart';
+import 'supabase_service.dart';
 import '../providers/notification_provider.dart';
 
 class DetectionManager {
@@ -85,7 +87,15 @@ class DetectionManager {
       // Update last notified confidence for this disease
       _lastNotifiedConfidence[detection.label] = detection.confidence;
 
-      // 4️⃣ Notify on detection
+      // 4️⃣ Save detection to database
+      final supabase = SupabaseService();
+      await supabase.saveDetection(
+        label: detection.label,
+        confidence: detection.confidence,
+        solution: '', // Empty solution - will be updated when user clicks recommendation
+      );
+
+      // 5️⃣ Notify on detection
       final notificationService = NotificationService();
       await notificationService.showDiseaseDetectionNotification(
         diseaseName: detection.label,

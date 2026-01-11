@@ -1,4 +1,5 @@
 // lib/services/supabase_service.dart
+import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:agrisense/utils/app_log.dart';
 
@@ -126,6 +127,95 @@ class SupabaseService {
     } catch (e) {
       appLog('SupabaseService.deleteDetectionsByIds error: $e');
       return false;
+    }
+  }
+
+  /// Get the most recent detection ID for a given disease label
+  /// Returns the ID of the latest detection matching the label, or null if not found
+  Future<int?> getLatestDetectionId(String label) async {
+    try {
+      final normalizedLabel = label.trim();
+      appLog('🔍 Looking for latest detection ID for "$normalizedLabel"');
+
+      final res = await _client
+          .from('detections')
+          .select('id')
+          .eq('label', normalizedLabel)
+          .order('timestamp', ascending: false)
+          .limit(1);
+
+      final data = res as List<dynamic>;
+      if (data.isEmpty) {
+        appLog('⚠️ No detection found for label "$normalizedLabel"');
+        return null;
+      }
+
+      final detectionId = data.first['id'] as int;
+      appLog('✅ Found latest detection ID: $detectionId for "$normalizedLabel"');
+      return detectionId;
+    } catch (e) {
+      appLog('❌ SupabaseService.getLatestDetectionId error: $e');
+      return null;
+    }
+  }
+
+  /// Update the solution column of an existing detection record
+  /// Used when user clicks "Get Recommendation" to update the most recent detection
+  Future<bool> updateDetectionSolution({
+    required int detectionId,
+    required String solution,
+  }) async {
+    try {
+      appLog('📝 Updating solution for detection ID: $detectionId');
+      appLog('💡 Solution: "${solution.substring(0, min(100, solution.length))}"');
+
+      // Update the detection record with the solution
+      final res = await _client
+          .from('detections')
+          .update({'solution': solution})
+          .eq('id', detectionId)
+          .select();
+
+      final data = res as List<dynamic>;
+      if (data.isEmpty) {
+        appLog('❌ Failed to update solution - no data returned');
+        return false;
+      }
+
+      appLog('✅ Successfully updated solution for detection ID: $detectionId');
+      return true;
+    } catch (e) {
+      appLog('❌ SupabaseService.updateDetectionSolution error: $e');
+      return false;
+    }
+  }
+
+  /// Test method to verify database connectivity and show all detections
+  Future<void> testDatabaseConnection() async {
+    try {
+      appLog('🧪 Testing database connection...');
+      
+      final res = await _client
+          .from('detections')
+          .select('id, label, confidence, solution, timestamp, updated_at')
+          .order('timestamp', ascending: false)
+          .limit(20);
+
+      appLog('✅ Database connection successful!');
+      appLog('📊 Total detections fetched: ${(res as List).length}');
+      
+      if ((res as List).isNotEmpty) {
+        appLog('\n📋 Recent Detections:');
+        for (var i = 0; i < (res as List).length; i++) {
+          final detection = res[i];
+          final solution = detection['solution'] ?? '(empty)';
+          appLog('  [$i] ID: ${detection['id']}, Label: "${detection['label']}", Confidence: ${detection['confidence']}, Solution: "$solution"');
+        }
+      } else {
+        appLog('⚠️ No detections in database');
+      }
+    } catch (e) {
+      appLog('❌ Database connection test failed: $e');
     }
   }
 }
