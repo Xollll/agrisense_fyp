@@ -211,7 +211,8 @@ RULES
       url,
       headers: {"Content-Type": "application/json"},
       body: body,
-    ).timeout(NetworkConfig.geminiRequestTimeout);
+      timeout: NetworkConfig.geminiRequestTimeout,
+    );
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);

@@ -99,8 +99,10 @@ class HttpRetryService {
     Encoding? encoding,
     int retries = maxRetries,
     Duration? delay,
+    Duration? timeout,
   }) async {
     delay ??= initialDelay;
+    timeout ??= requestTimeout;
 
     try {
       appLog('POST $url (attempt ${maxRetries - retries + 1}/$maxRetries)');
@@ -112,7 +114,7 @@ class HttpRetryService {
             body: body,
             encoding: encoding,
           )
-          .timeout(requestTimeout);
+          .timeout(timeout);
 
       // Success
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -135,6 +137,7 @@ class HttpRetryService {
               milliseconds:
                   (delay.inMilliseconds * backoffMultiplier).toInt(),
             ),
+            timeout: timeout,
           );
         }
       }
@@ -155,6 +158,7 @@ class HttpRetryService {
             milliseconds:
                 (delay.inMilliseconds * backoffMultiplier).toInt(),
           ),
+          timeout: timeout,
         );
       }
 
@@ -174,6 +178,7 @@ class HttpRetryService {
             milliseconds:
                 (delay.inMilliseconds * backoffMultiplier).toInt(),
           ),
+          timeout: timeout,
         );
       }
 
