@@ -44,6 +44,9 @@ class NotificationService {
 
       // Request permissions for iOS
       await _requestIOSPermissions();
+      
+      // Request permissions for Android 13+
+      await _requestAndroidPermissions();
 
       appLog('Notification service initialized');
     } catch (e) {
@@ -65,6 +68,28 @@ class NotificationService {
       appLog('iOS notification permissions requested');
     } catch (e) {
       appLog('Error requesting iOS permissions: $e');
+    }
+  }
+
+  /// Request Android notification permissions (Android 13+)
+  Future<void> _requestAndroidPermissions() async {
+    try {
+      final AndroidFlutterLocalNotificationsPlugin? androidPlugin =
+          _flutterLocalNotificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                  AndroidFlutterLocalNotificationsPlugin>();
+
+      if (androidPlugin != null) {
+        final bool? granted =
+            await androidPlugin.requestNotificationsPermission();
+        if (granted == true) {
+          appLog('✅ Android notification permissions granted');
+        } else {
+          appLog('❌ Android notification permissions denied');
+        }
+      }
+    } catch (e) {
+      appLog('Error requesting Android permissions: $e');
     }
   }
 
