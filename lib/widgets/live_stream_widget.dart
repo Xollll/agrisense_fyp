@@ -191,7 +191,11 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
                   const SizedBox(width: 10),
                   Text(
                     "Current Detections",
-                    style: Theme.of(context).textTheme.headlineMedium,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black87,
+                    ),
                   ),
                 ],
               ),
@@ -226,89 +230,86 @@ class _LiveStreamWidgetState extends State<LiveStreamWidget> {
                   : SizedBox(
                       height:
                           160, // Keep this constant so AI section doesn't jump
-                      child: Scrollbar(
-                        thumbVisibility: true,
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          child: Column(
-                            children: groupedList.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final g = entry.value;
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          children: groupedList.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final g = entry.value;
 
-                              return Padding(
-                                padding: EdgeInsets.only(
-                                  bottom: index < groupedList.length - 1
-                                      ? 16
-                                      : 0,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            g.count > 1
-                                                ? '${g.label} (x${g.count})'
-                                                : g.label,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 16,
-                                                ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                bottom: index < groupedList.length - 1
+                                    ? 16
+                                    : 0,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          g.count > 1
+                                              ? '${g.label} (x${g.count})'
+                                              : g.label,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 16,
+                                              ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.warning
-                                                .withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            border: Border.all(
-                                              color: AppColors.warning
-                                                  .withOpacity(0.3),
-                                            ),
-                                          ),
-                                          child: Text(
-                                            '${(g.maxConfidence * 100).toStringAsFixed(0)}%',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.warning,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: LinearProgressIndicator(
-                                        value: g.maxConfidence,
-                                        minHeight: 6,
-                                        backgroundColor: AppColors.warning
-                                            .withOpacity(0.15),
-                                        valueColor:
-                                            const AlwaysStoppedAnimation<Color>(
-                                              AppColors.warning,
-                                            ),
                                       ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.warning
+                                              .withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          border: Border.all(
+                                            color: AppColors.warning
+                                                .withOpacity(0.3),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${(g.maxConfidence * 100).toStringAsFixed(0)}%',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.warning,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: LinearProgressIndicator(
+                                      value: g.maxConfidence,
+                                      minHeight: 6,
+                                      backgroundColor: AppColors.warning
+                                          .withOpacity(0.15),
+                                      valueColor:
+                                          const AlwaysStoppedAnimation<Color>(
+                                            AppColors.warning,
+                                          ),
                                     ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
                         ),
                       ),
                     ),

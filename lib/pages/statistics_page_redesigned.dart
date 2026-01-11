@@ -652,14 +652,18 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black87,
           ),
         ),
         Text(
           label,
           style: TextStyle(
             fontSize: 11,
-            color: Colors.white.withOpacity(0.9),
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withOpacity(0.9)
+                : Colors.black87.withOpacity(0.8),
           ),
         ),
       ],
@@ -1232,10 +1236,12 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
 
     if (maxCount == 0) return const SizedBox.shrink();
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: data.asMap().entries.map((entry) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: data.asMap().entries.map((entry) {
         final index = entry.key;
         final item = entry.value;
         final itemCount = item.count is int ? item.count : 0;
@@ -1305,6 +1311,7 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
           ),
         );
       }).toList(),
+      ),
     );
   }
 
