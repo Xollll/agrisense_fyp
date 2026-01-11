@@ -1962,17 +1962,6 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
             ),
             const SizedBox(height: 24),
             _buildExportOption(
-              icon: Icons.table_chart,
-              label: 'CSV Report',
-              subtitle: 'Spreadsheet format',
-              color: Colors.green,
-              onTap: () {
-                Navigator.pop(context);
-                _exportAsCSV();
-              },
-            ),
-            const SizedBox(height: 12),
-            _buildExportOption(
               icon: Icons.picture_as_pdf,
               label: 'PDF Report',
               subtitle: 'Printable document',
@@ -2050,74 +2039,6 @@ class _StatisticsPageModernState extends State<StatisticsPageModern>
         ),
       ),
     );
-  }
-
-  Future<void> _exportAsCSV() async {
-    try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.downloading, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Exporting CSV...'),
-            ],
-          ),
-          backgroundColor: cropGreen,
-          duration: const Duration(seconds: 1),
-        ),
-      );
-
-      final stats = context.read<StatisticsProvider>();
-      final detections = stats.diseaseStats.map((ds) => {
-        'disease': ds.disease,
-        'count': ds.count.toString(),
-        'percentage': '${ds.percentage.toStringAsFixed(1)}%',
-        'last_detected': ds.lastDetected.toIso8601String(),
-      }).toList();
-
-      final file = await ExportService.exportToCSV(detections: detections);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text('CSV saved: ${file.path.split('/').last}'),
-                ),
-              ],
-            ),
-            backgroundColor: leafGreen,
-            action: SnackBarAction(
-              label: 'OPEN',
-              textColor: Colors.white,
-              onPressed: () {
-                _openFile(file);
-              },
-            ),
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Export failed: $e')),
-              ],
-            ),
-            backgroundColor: Colors.red.shade600,
-          ),
-        );
-      }
-    }
   }
 
   Future<void> _exportAsPDF() async {

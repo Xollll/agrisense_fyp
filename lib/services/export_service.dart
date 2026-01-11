@@ -1,5 +1,4 @@
 // lib/services/export_service.dart
-import 'package:csv/csv.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -23,69 +22,9 @@ class ExportData {
   });
 }
 
-/// Service for exporting detection data to CSV and PDF formats
+/// Service for exporting detection data to PDF format
 class ExportService {
-  static const String _csvFileName = 'agrisense_detections_';
   static const String _pdfFileName = 'agrisense_report_';
-
-  /// Export disease statistics to CSV format
-  static Future<File> exportToCSV({
-    required List<Map<String, dynamic>> detections,
-  }) async {
-    try {
-      appLog('Exporting to CSV...');
-
-      // Prepare CSV data from disease statistics
-      List<List<dynamic>> csvData = [
-        // Header row
-        [
-          'Disease',
-          'Detection Count',
-          'Percentage (%)',
-          'Last Detected',
-        ],
-      ];
-
-      // Data rows - detections here are already formatted disease stats
-      for (var detection in detections) {
-        csvData.add([
-          detection['disease'] ?? 'Unknown',
-          detection['count'] ?? '0',
-          detection['percentage'] ?? '0%',
-          detection['last_detected'] ?? 'N/A',
-        ]);
-      }
-
-      // Convert to CSV string
-      String csvString = const ListToCsvConverter().convert(csvData);
-
-      // Get downloads directory or fall back to documents
-      Directory? directory;
-      try {
-        directory = await getDownloadsDirectory();
-      } catch (e) {
-        appLog('Downloads directory not available, using app documents directory');
-        directory = await getApplicationDocumentsDirectory();
-      }
-
-      if (directory == null) {
-        throw Exception('Unable to access file storage directory');
-      }
-
-      final fileName =
-          '$_csvFileName${DateTime.now().millisecondsSinceEpoch}.csv';
-      final file = File('${directory.path}/$fileName');
-
-      // Write to file
-      await file.writeAsString(csvString);
-      appLog('CSV exported to: ${file.path}');
-
-      return file;
-    } catch (e) {
-      appLog('CSV export error: $e');
-      throw Exception('Failed to export CSV: $e');
-    }
-  }
 
   /// Export statistics and disease breakdown to PDF report
   static Future<File> exportToPDF({
@@ -339,32 +278,6 @@ class ExportService {
     } catch (e) {
       appLog('Share error: $e');
       throw Exception('Failed to share file: $e');
-    }
-  }
-
-  /// Generate both CSV and PDF and return paths
-  static Future<Map<String, File>> exportBoth({
-    required List<Map<String, dynamic>> detections,
-    required Map<String, dynamic> summary,
-    required List<DiseaseStats> diseaseStats,
-  }) async {
-    try {
-      appLog('Exporting to both CSV and PDF...');
-
-      final csv = await exportToCSV(detections: detections);
-      final pdf = await exportToPDF(
-        detections: detections,
-        summary: summary,
-        diseaseStats: diseaseStats,
-      );
-
-      return {
-        'csv': csv,
-        'pdf': pdf,
-      };
-    } catch (e) {
-      appLog('Dual export error: $e');
-      throw Exception('Failed to export both formats: $e');
     }
   }
 }
