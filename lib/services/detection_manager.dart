@@ -3,6 +3,7 @@
 // Background polling for disease detection
 // =============================================
 // Polls camera for new detections and sends notifications
+// Only notifies when confidence varies by 10% or more for the same disease
 // Does NOT make API calls or save recommendations (user-triggered only)
 //
 import 'dart:async';
@@ -15,6 +16,13 @@ class DetectionManager {
   NotificationProvider? _notificationProvider;
 
   bool _isProcessing = false;
+
+  // Track last notified confidence for each disease to avoid spam
+  // Key: disease label, Value: last notified confidence
+  final Map<String, double> _lastNotifiedConfidence = {};
+
+  // Confidence threshold for notification (10% variation)
+  static const double _confidenceThreshold = 0.10;
 
   // Set notification provider for in-app notifications
   void setNotificationProvider(NotificationProvider provider) {
@@ -32,6 +40,23 @@ class DetectionManager {
   void stopPolling() {
     _timer?.cancel();
     _timer = null;
+  }
+
+  /// Check if confidence change warrants a notification
+  /// Returns true if:
+  /// 1. First detection of this disease, OR
+  /// 2. Confidence changed by 10% or more
+  bool _shouldNotify(String diseaseName, double newConfidence) {
+    final lastConfidence = _lastNotifiedConfidence[diseaseName];
+
+    // First detection of this disease
+    if (lastConfidence == null) {
+      return true;
+    }
+
+    // Check if confidence changed by threshold (10%)
+    final confidenceDifference = (newConfidence - lastConfidence).abs();
+    return confidenceDifference >= _confidenceThreshold;
   }
 
   Future<void> _pollOnce() async {
@@ -52,7 +77,15 @@ class DetectionManager {
         return;
       }
 
-      // 3️⃣ Notify on detection
+      // 3️⃣ Check if we should send notification based on confidence change
+      if (!_shouldNotify(detection.label, detection.confidence)) {
+        return; // Skip notification if confidence hasn't changed enough
+      }
+
+      // Update last notified confidence for this disease
+      _lastNotifiedConfidence[detection.label] = detection.confidence;
+
+      // 4️⃣ Notify on detection
       final notificationService = NotificationService();
       await notificationService.showDiseaseDetectionNotification(
         diseaseName: detection.label,
