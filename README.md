@@ -50,21 +50,3 @@ Side-by-side preview
 	</tr>
 </table>
 
----
-
-Stacked (Markdown) — useful for narrow viewports; each screenshot has a title and a separator:
-
-**Live Stream**
-![Live stream](assets/screenshots/live_stream.jpg)
-
----
-
-**Statistics**
-![Statistics](assets/screenshots/statistic.jpg)
-
----
-
-**History**
-![History](assets/screenshots/history.jpg)
-
-Note: renaming files to remove spaces (e.g. `live_stream.jpg`) is recommended to avoid URL encoding issues.
