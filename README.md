@@ -32,4 +32,39 @@ flutter run -d <device>
 
 Side-by-side preview 
 
-<img src="assets/screenshots/live_stream.jpg" width="300" /> <img src="assets/screenshots/statistic.jpg" width="300" /> <img src="assets/screenshots/history.jpg" width="300" />
+
+<table>
+	<tr>
+		<td align="center">
+			<img src="assets/screenshots/live_stream.jpg" width="300" />
+			<div><strong>Live Stream</strong></div>
+		</td>
+		<td align="center">
+			<img src="assets/screenshots/statistic.jpg" width="300" />
+			<div><strong>Statistics</strong></div>
+		</td>
+		<td align="center">
+			<img src="assets/screenshots/history.jpg" width="300" />
+			<div><strong>History</strong></div>
+		</td>
+	</tr>
+</table>
+
+---
+
+Stacked (Markdown) — useful for narrow viewports; each screenshot has a title and a separator:
+
+**Live Stream**
+![Live stream](assets/screenshots/live_stream.jpg)
+
+---
+
+**Statistics**
+![Statistics](assets/screenshots/statistic.jpg)
+
+---
+
+**History**
+![History](assets/screenshots/history.jpg)
+
+Note: renaming files to remove spaces (e.g. `live_stream.jpg`) is recommended to avoid URL encoding issues.
