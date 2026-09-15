@@ -50,3 +50,15 @@ Side-by-side preview
 	</tr>
 </table>
 
+---
+
+**Edge Device: Raspberry Pi 4B (Camera Module 3)**
+
+| Raspberry Pi 4B | Description |
+|---:|---|
+| <img src="assets/screenshots/RPI_4B.jpg" width="300" /> | **Purpose:** The Raspberry Pi 4B paired with the Camera Module 3 captures the live video feed of the crop canopy. The Pi runs a small Flask server (default port 5000 in this project) that:
+	- streams live video locally to the mobile app/dashboard, and
+	- exposes detection results for the Flutter app to poll (`DETECTION_SERVER_URL`, default `http://172.20.10.3:5000`).
+
+This edge device handles capture and lightweight preprocessing so the mobile app can receive a live view and the latest detection results over the local network. Keep the Pi and mobile device on the same LAN or use a secure tunnel for remote access.
+
